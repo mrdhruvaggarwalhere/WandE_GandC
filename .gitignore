@@ -1,0 +1,30 @@
+# Python & Environments
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+
+# Local Database & Exports
+*.db
+*.sqlite
+*.sqlite3
+*.xlsx
+!tests/fixtures/*.xlsx
+
+# OS & Editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo

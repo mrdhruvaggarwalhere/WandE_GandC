@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>G&C Central Deal & Brokerage Automation Platform</title>
+  <meta name="description" content="Central deal tracking, resale chaining, price-difference profit, per-tonne brokerage, and direct billing automation for edible-oil brokers.">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">G&C</div>
+        <div class="brand-text">
+          <h1>G&C Brokerage</h1>
+          <p>Automation Platform</p>
+        </div>
+      </div>
+
+      <div class="nav-section-title">Core Operations</div>
+      <ul class="nav-links">
+        <li>
+          <a class="nav-item active" data-view="dashboard" id="nav-dashboard">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Dashboard</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-view="deals" id="nav-deals">
+            <i data-lucide="file-spreadsheet"></i>
+            <span>Deals Register</span>
+            <span class="nav-badge" id="badge-deals-count">0</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-view="chains" id="nav-chains">
+            <i data-lucide="git-merge"></i>
+            <span>Deal Chains (Lots)</span>
+            <span class="nav-badge" id="badge-chains-count">0</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-view="billing" id="nav-billing">
+            <i data-lucide="receipt"></i>
+            <span>Direct Billing</span>
+            <span class="nav-badge" id="badge-billing-ready">0</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="nav-section-title">Financial & Reports</div>
+      <ul class="nav-links">
+        <li>
+          <a class="nav-item" data-view="ledger" id="nav-ledger">
+            <i data-lucide="book-open"></i>
+            <span>Party Ledgers</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-view="reports" id="nav-reports">
+            <i data-lucide="bar-chart-3"></i>
+            <span>Analytics & Reports</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-view="busy" id="nav-busy">
+            <i data-lucide="layers"></i>
+            <span>BUSY Integration</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="nav-section-title">Administration</div>
+      <ul class="nav-links">
+        <li>
+          <a class="nav-item" data-view="masters" id="nav-masters">
+            <i data-lucide="settings"></i>
+            <span>Masters & Settings</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-view="tests" id="nav-tests">
+            <i data-lucide="check-circle-2"></i>
+            <span>Acceptance Test</span>
+          </a>
+        </li>
+      </ul>
+
+      <!-- Role Switcher in Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div class="role-switcher-card">
+          <div class="role-label">
+            <span>ACTIVE ROLE</span>
+            <span id="role-badge" class="badge badge-profit">ADMIN</span>
+          </div>
+          <select id="role-select" class="role-select">
+            <option value="ADMIN" selected>Administrator (Full Access)</option>
+            <option value="BROKER">Broker / Operator</option>
+            <option value="ACCOUNTS">Accounts (Review & Billing)</option>
+            <option value="VIEWER">Viewer (Read Only)</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Panel -->
+    <main class="app-main">
+      <!-- Header Bar -->
+      <header class="app-header">
+        <div class="header-title-area">
+          <h2 id="page-title">Dashboard Overview</h2>
+          <span id="page-subtitle">Central deal tracking and brokerage metrics</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-export-excel" title="Download Complete Excel Workbook">
+            <i data-lucide="download"></i>
+            <span>Export Excel (.xlsx)</span>
+          </button>
+          <button class="btn btn-primary btn-sm" id="btn-open-new-deal">
+            <i data-lucide="plus-circle"></i>
+            <span>+ New Deal</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Views Container -->
+      <div class="page-view" id="main-view-container">
+        <!-- 1. DASHBOARD VIEW -->
+        <section id="view-dashboard">
+          <!-- Top Financial KPI Cards -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <span>Active Deals</span>
+                <div class="kpi-icon"><i data-lucide="file-text"></i></div>
+              </div>
+              <div class="kpi-value" id="kpi-active-deals">0</div>
+              <div class="kpi-sub">Across all commodities</div>
+            </div>
+
+            <div class="kpi-card emerald">
+              <div class="kpi-top">
+                <span>Price-Diff Profit</span>
+                <div class="kpi-icon"><i data-lucide="trending-up"></i></div>
+              </div>
+              <div class="kpi-value text-profit" id="kpi-profit">₹0.00</div>
+              <div class="kpi-sub">Chain resale difference earnings</div>
+            </div>
+
+            <div class="kpi-card indigo">
+              <div class="kpi-top">
+                <span>Total Brokerage</span>
+                <div class="kpi-icon"><i data-lucide="coins"></i></div>
+              </div>
+              <div class="kpi-value" id="kpi-brokerage">₹0.00</div>
+              <div class="kpi-sub">Buyer & Seller per-tonne fee</div>
+            </div>
+
+            <div class="kpi-card emerald">
+              <div class="kpi-top">
+                <span>Net Total Earning</span>
+                <div class="kpi-icon"><i data-lucide="wallet"></i></div>
+              </div>
+              <div class="kpi-value text-profit" id="kpi-net-earning">₹0.00</div>
+              <div class="kpi-sub">Profit + Total Brokerage</div>
+            </div>
+          </div>
+
+          <!-- Direct Billing Highlighting Banner -->
+          <div class="direct-billing-banner mt-24" id="dashboard-billing-banner" style="display: none;">
+            <div class="banner-icon">
+              <i data-lucide="receipt"></i>
+            </div>
+            <div class="banner-content">
+              <h3>Latest Official Direct-Billing Instruction</h3>
+              <p class="banner-text" id="dashboard-banner-text">Loading instruction...</p>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-banner-view-chain" style="margin-left: auto;">
+              <span>View Chain</span>
+              <i data-lucide="arrow-right"></i>
+            </button>
+          </div>
+
+          <!-- Deliveries & Alert Cards -->
+          <div class="kpi-grid mt-24">
+            <div class="kpi-card amber">
+              <div class="kpi-top">
+                <span>Deliveries Due Today</span>
+                <div class="kpi-icon"><i data-lucide="calendar"></i></div>
+              </div>
+              <div class="kpi-value" id="kpi-del-today">0</div>
+              <div class="kpi-sub">Agreed delivery date today</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <span>Deliveries This Week</span>
+                <div class="kpi-icon"><i data-lucide="clock"></i></div>
+              </div>
+              <div class="kpi-value" id="kpi-del-week">0</div>
+              <div class="kpi-sub">Next 7 calendar days</div>
+            </div>
+
+            <div class="kpi-card rose">
+              <div class="kpi-top">
+                <span>Overdue Deliveries</span>
+                <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
+              </div>
+              <div class="kpi-value" style="color: #FB7185;" id="kpi-del-overdue">0</div>
+              <div class="kpi-sub">Passed without confirmation</div>
+            </div>
+
+            <div class="kpi-card emerald">
+              <div class="kpi-top">
+                <span>Ready for Direct Bill</span>
+                <div class="kpi-icon"><i data-lucide="check-circle-2"></i></div>
+              </div>
+              <div class="kpi-value" id="kpi-chains-billing">0</div>
+              <div class="kpi-sub">Awaiting invoice approval</div>
+            </div>
+          </div>
+
+          <!-- Two Column Table Section: Recent Deals & Brokerage Receivables -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;" class="mt-24">
+            <!-- Recent Deals Table -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="activity"></i>
+                  <span>Recent Deal Transactions</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="app.navigate('deals')">View All Deals</button>
+              </div>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Deal Date</th>
+                      <th>Buyer</th>
+                      <th>Seller</th>
+                      <th>Product</th>
+                      <th>Qty (MT)</th>
+                      <th>Rate (₹)</th>
+                      <th>Profit (₹)</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashboard-deals-tbody">
+                    <!-- Populated via JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Party Receivables -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="users"></i>
+                  <span>Brokerage Receivables</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="app.navigate('ledger')">Open Ledger</button>
+              </div>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Party Name</th>
+                      <th>Due Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashboard-receivables-tbody">
+                    <!-- Populated via JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. DEALS REGISTER VIEW (A:G Excel Style Mapping) -->
+        <section id="view-deals" style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="file-spreadsheet"></i>
+                <span>Primary Deal Register (Excel Columns A:G Compliant)</span>
+              </div>
+              <div class="flex-between gap-12">
+                <input type="text" id="filter-deals-search" class="form-control form-control-sm" placeholder="Search party, product, lot..." style="width: 240px;">
+                <button class="btn btn-primary btn-sm" id="btn-deals-new-deal">+ Add Deal</button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table" id="deals-table">
+                <thead>
+                  <tr>
+                    <th class="highlight-ag">Deal Date (A)</th>
+                    <th class="highlight-ag">Buyer (B)</th>
+                    <th class="highlight-ag">Seller (C)</th>
+                    <th class="highlight-ag">Product (D)</th>
+                    <th class="highlight-ag">Quantity (E)</th>
+                    <th class="highlight-ag">Price & GST (F)</th>
+                    <th class="highlight-ag">Delivery Date (G)</th>
+                    <th>Lot ID</th>
+                    <th>Link #</th>
+                    <th>Profit (₹)</th>
+                    <th>Brokerage (₹)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="deals-table-tbody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. DEAL CHAINS (LOTS) & RESALE WORKFLOW VIEW -->
+        <section id="view-chains" style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="git-merge"></i>
+                <span>Deal Chains (Lots) & Resale Progression</span>
+              </div>
+              <span class="text-muted" style="font-size: 12px;">Track multi-leg intermediate resales, party instructions, and final direct billing</span>
+            </div>
+            <div id="chains-container" class="timeline-tree">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. OFFICIAL DIRECT BILLING INSTRUCTIONS VIEW -->
+        <section id="view-billing" style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="receipt"></i>
+                <span>Official Direct-Billing Instructions</span>
+              </div>
+              <span class="badge badge-profit">Direct Commercial Invoices</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Instruction ID</th>
+                    <th>Lot ID</th>
+                    <th>Original Bill Seller</th>
+                    <th>Final Bill Buyer</th>
+                    <th>Product & Qty</th>
+                    <th>Final Rate (₹)</th>
+                    <th>Total Value (₹)</th>
+                    <th>Approval Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="billing-table-tbody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. PARTY LEDGER & BROKERAGE STATEMENTS -->
+        <section id="view-ledger" style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="book-open"></i>
+                <span>Party Ledger & Brokerage Settlements</span>
+              </div>
+              <div class="flex-between gap-12">
+                <select id="ledger-party-select" class="form-control" style="width: 280px;">
+                  <option value="">-- All Parties --</option>
+                </select>
+                <button class="btn btn-success btn-sm" id="btn-open-payment-modal">
+                  <i data-lucide="plus-circle"></i>
+                  <span>Record Payment</span>
+                </button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Entry Date</th>
+                    <th>Party Name</th>
+                    <th>Type</th>
+                    <th>Reference / Deal</th>
+                    <th>Amount (₹)</th>
+                    <th>Notes</th>
+                    <th>Recorded By</th>
+                  </tr>
+                </thead>
+                <tbody id="ledger-table-tbody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. ANALYTICS & REPORTS SUITE -->
+        <section id="view-reports" style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="bar-chart-3"></i>
+                <span>Reports Suite (10+ Reports)</span>
+              </div>
+              <div class="flex-between gap-12">
+                <select id="report-type-select" class="form-control" style="width: 260px;">
+                  <option value="deal-register">1. Deal Register</option>
+                  <option value="profit-report">2. Price-Difference Profit Report</option>
+                  <option value="brokerage-outstanding">3. Party-Wise Brokerage Outstanding</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" onclick="reports.loadReport()">Refresh Report</button>
+              </div>
+            </div>
+            <div class="table-responsive mt-16">
+              <table class="table" id="report-dynamic-table">
+                <thead id="report-table-thead"></thead>
+                <tbody id="report-table-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. MASTERS & SETTINGS -->
+        <section id="view-masters" style="display: none;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Parties Master -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="users"></i>
+                  <span>Party Master</span>
+                </div>
+                <button class="btn btn-primary btn-sm" id="btn-add-party">+ Add Party</button>
+              </div>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Party Name</th>
+                      <th>Type</th>
+                      <th>Default Rates (₹/MT)</th>
+                      <th>BUSY Ledger Code</th>
+                    </tr>
+                  </thead>
+                  <tbody id="masters-parties-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Products Master -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="package"></i>
+                  <span>Product Master</span>
+                </div>
+                <button class="btn btn-primary btn-sm" id="btn-add-product">+ Add Product</button>
+              </div>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Product Name</th>
+                      <th>Code</th>
+                      <th>GST %</th>
+                      <th>BUSY Item Code</th>
+                    </tr>
+                  </thead>
+                  <tbody id="masters-products-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. BUSY INTEGRATION HUB -->
+        <section id="view-busy" style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="layers"></i>
+                <span>BUSY Accounting Integration Adapter</span>
+              </div>
+              <span class="badge badge-neutral">Voucher Series: Main (Sales)</span>
+            </div>
+            <p class="text-muted" style="font-size: 13px; margin-bottom: 18px;">
+              Strict Safeguard Enforced: Only approved official direct-billing instructions are staged for BUSY export. Internal intermediate deal-chain entries cannot accidentally be posted as commercial invoices.
+            </p>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Voucher #</th>
+                    <th>Lot ID</th>
+                    <th>Seller (BUSY Code)</th>
+                    <th>Buyer (BUSY Code)</th>
+                    <th>Product</th>
+                    <th>Total Value (₹)</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="busy-table-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 9. ACCEPTANCE TEST SUITE -->
+        <section id="view-tests" style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="check-circle-2"></i>
+                <span>Mandatory Worked Example Acceptance Test Runner</span>
+              </div>
+              <button class="btn btn-success btn-sm" id="btn-run-acceptance-test">
+                <i data-lucide="play"></i>
+                <span>Run Acceptance Test</span>
+              </button>
+            </div>
+            <div id="test-runner-container" class="mt-16">
+              <!-- Populated dynamically with assertion results -->
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- Modal 1: New Deal Entry -->
+  <div class="modal-backdrop" id="modal-new-deal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">New Deal Entry (Single-Entry Capture)</div>
+        <button class="close-btn" onclick="app.closeModals()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-new-deal">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Deal Date (DD/MM/YYYY) *</label>
+              <input type="date" id="deal-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Product *</label>
+              <select id="deal-product" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Seller (Selling Party) *</label>
+              <select id="deal-seller" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Buyer (Buying Party) *</label>
+              <select id="deal-buyer" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Quantity in Quintals (100 kg) *</label>
+              <input type="number" step="0.01" id="deal-qty-qtl" class="form-control form-control-mono" placeholder="e.g. 320" required>
+              <span class="form-hint" id="deal-qty-tonnes-hint">Equal to: 0.00 MT</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Rate per Quintal (₹) *</label>
+              <input type="number" step="0.01" id="deal-rate-qtl" class="form-control form-control-mono" placeholder="e.g. 15700" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Delivery Date *</label>
+              <input type="date" id="deal-delivery-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">GST Applicability</label>
+              <select id="deal-gst-applicable" class="form-control">
+                <option value="1" selected>Plus 5% GST</option>
+                <option value="0">No GST</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Buyer Brokerage (₹ / Tonne)</label>
+              <input type="number" step="0.01" id="deal-buyer-brok" class="form-control form-control-mono" value="50.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Seller Brokerage (₹ / Tonne)</label>
+              <input type="number" step="0.01" id="deal-seller-brok" class="form-control form-control-mono" value="50.00">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Internal Notes / Specifications</label>
+              <textarea id="deal-notes" class="form-control" rows="2" placeholder="e.g. Mustard oil contract ex-plant"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save & Confirm Deal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Resell / Add Next Deal in Chain -->
+  <div class="modal-backdrop" id="modal-resell">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">Resell / Link Next Deal (Chain Progression)</div>
+        <button class="close-btn" onclick="app.closeModals()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-resell">
+        <input type="hidden" id="resell-chain-id">
+        <input type="hidden" id="resell-parent-deal-id">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Lot / Chain ID</label>
+              <input type="text" id="resell-chain-id-display" class="form-control form-control-mono" readonly>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Product</label>
+              <input type="text" id="resell-product-display" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Instructing Seller (Previous Buyer) *</label>
+              <select id="resell-seller" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Party Instruction Date *</label>
+              <input type="date" id="resell-inst-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Party Authorized Rate / Qtl (₹) *</label>
+              <input type="number" step="0.01" id="resell-auth-rate" class="form-control form-control-mono" placeholder="e.g. 16450" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Actual New Buyer *</label>
+              <select id="resell-buyer" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Actual Resale Rate / Qtl (₹) *</label>
+              <input type="number" step="0.01" id="resell-actual-rate" class="form-control form-control-mono" placeholder="e.g. 16475" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Resale Quantity (Quintals) *</label>
+              <input type="number" step="0.01" id="resell-qty-qtl" class="form-control form-control-mono" required>
+              <span class="form-hint" id="resell-qty-hint">Max available: 320 Qtl</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Delivery Date *</label>
+              <input type="date" id="resell-delivery-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Buyer Brokerage (₹ / MT)</label>
+              <input type="number" step="0.01" id="resell-buyer-brok" class="form-control form-control-mono" value="50.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Seller Brokerage (₹ / MT)</label>
+              <input type="number" step="0.01" id="resell-seller-brok" class="form-control form-control-mono" value="50.00">
+            </div>
+            <div class="form-group full-width">
+              <!-- Live Profit Calculation Display -->
+              <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 12px; border-radius: 8px;">
+                <div style="font-size: 11px; color: #6EE7B7; text-transform: uppercase; font-weight: 700;">Live Profit Difference Preview</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                  <span id="resell-calc-diff-text" style="font-size: 13px;">Diff: ₹0.00 / Qtl</span>
+                  <span id="resell-calc-profit-text" class="text-profit" style="font-size: 16px; font-weight: 800;">Profit: ₹0.00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-success">Link Resale Deal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Record Brokerage Payment -->
+  <div class="modal-backdrop" id="modal-payment">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">Record Brokerage Payment / Receipt</div>
+        <button class="close-btn" onclick="app.closeModals()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-payment">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label class="form-label">Party Name *</label>
+              <select id="pay-party-id" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Amount (₹) *</label>
+              <input type="number" step="0.01" id="pay-amount" class="form-control form-control-mono" placeholder="e.g. 3200" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Entry Date *</label>
+              <input type="date" id="pay-date" class="form-control" required>
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Reference # / UTR / Cheque</label>
+              <input type="text" id="pay-ref" class="form-control" placeholder="e.g. NEFT-883921">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Notes</label>
+              <input type="text" id="pay-notes" class="form-control" placeholder="Payment received via bank transfer">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Receipt</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: BUSY XML / JSON Voucher Viewer -->
+  <div class="modal-backdrop" id="modal-busy-voucher">
+    <div class="modal-dialog" style="max-width: 750px;">
+      <div class="modal-header">
+        <div class="modal-title" id="busy-voucher-modal-title">BUSY Voucher Payload</div>
+        <button class="close-btn" onclick="app.closeModals()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="flex-between gap-12" style="margin-bottom: 12px;">
+          <span class="badge badge-status-confirmed">BUSY 18 / 21 XML Format</span>
+          <button class="btn btn-secondary btn-sm" id="btn-copy-busy-payload">
+            <i data-lucide="copy"></i>
+            <span>Copy Payload</span>
+          </button>
+        </div>
+        <pre class="code-block" id="busy-voucher-code"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="app.closeModals()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- JS Logic Scripts -->
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/deal_entry.js"></script>
+  <script src="/static/js/deal_chain.js"></script>
+  <script src="/static/js/billing.js"></script>
+  <script src="/static/js/ledger.js"></script>
+  <script src="/static/js/reports.js"></script>
+  <script src="/static/js/masters.js"></script>
+  <script src="/static/js/busy_adapter.js"></script>
+  <script src="/static/js/test_runner.js"></script>
+</body>
+</html>
