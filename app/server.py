@@ -449,14 +449,19 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 send_res = send_whatsapp_pdf_document(phone, pdf_bytes, filename, caption)
                 
                 if send_res.get('success'):
-                    api_routes.create_dispatch_log({
-                        'deal_id': deal_dict['id'],
-                        'recipient_type': 'COUNTERPARTY',
-                        'recipient_name': deal_dict.get('buyer_name'),
-                        'channel': 'WHATSAPP_AUTO',
-                        'phone_or_email': phone,
-                        'message_preview': f"Auto-delivered {filename} with PDF attachment via Gateway"
-                    }, actor_name=actor_name)
+                    try:
+                        recip_type = 'SELLER' if phone in str(deal_dict.get('seller_phone') or '') else 'BUYER'
+                        recip_name = deal_dict.get('seller_name') if recip_type == 'SELLER' else deal_dict.get('buyer_name')
+                        api_routes.create_dispatch_log({
+                            'deal_id': deal_dict['id'],
+                            'recipient_type': recip_type,
+                            'recipient_name': recip_name,
+                            'channel': 'WHATSAPP_AUTO',
+                            'phone_or_email': phone,
+                            'message_preview': f"Auto-delivered {filename} with PDF attachment"
+                        }, actor_name=actor_name)
+                    except Exception as log_err:
+                        print(f"Dispatch log error: {log_err}")
 
                 return self.send_json_response(send_res)
 

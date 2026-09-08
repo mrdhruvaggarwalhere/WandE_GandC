@@ -213,57 +213,89 @@ class WhatsAppBot:
 
         time.sleep(1)
 
+        print(f"[WhatsAppBot] Finding file inputs on WhatsApp Web...")
+        file_inputs = self._page.query_selector_all("input[type='file']")
+        print(f"[WhatsAppBot] Found {len(file_inputs)} file inputs prior to clicking attach.")
+
         # 1. Click attach button to reveal inputs if needed
         attach_btn = self._page.query_selector("span[data-icon='plus'], span[data-icon='attach-menu-plus'], button[aria-label*='Attach']")
         if attach_btn:
             try:
                 attach_btn.click()
-                time.sleep(0.8)
-            except Exception:
-                pass
+                time.sleep(1)
+                file_inputs = self._page.query_selector_all("input[type='file']")
+                print(f"[WhatsAppBot] Found {len(file_inputs)} file inputs after clicking attach.")
+            except Exception as e:
+                print(f"[WhatsAppBot] Attach click error: {e}")
 
-        # 2. Find file input
-        file_inputs = self._page.query_selector_all("input[type='file']")
         target_input = None
-
-        for inp in file_inputs:
+        for idx, inp in enumerate(file_inputs):
             accept = inp.get_attribute("accept") or ""
-            # Document input typically accepts "*", "*/*", or doesn't restrict to image/video
-            if "*" in accept or "pdf" in accept or "document" in accept:
+            print(f"[WhatsAppBot] Input #{idx}: accept='{accept}'")
+            # Document input typically accepts "*", "*/*", or has no restriction, or contains pdf
+            if accept in ("*", "*/*") or "pdf" in accept or "document" in accept:
                 target_input = inp
                 break
 
         if not target_input and file_inputs:
-            target_input = file_inputs[0]
+            # Prefer input that does NOT restrict to image/video
+            for inp in file_inputs:
+                accept = inp.get_attribute("accept") or ""
+                if "image" not in accept:
+                    target_input = inp
+                    break
+            if not target_input:
+                target_input = file_inputs[-1]  # In many WA versions, document is the last input
 
         if not target_input:
-            return {"success": False, "error": "Could not find WhatsApp attachment upload element."}
+            self._page.screenshot(path="scratch/no_input_found.png")
+            return {"success": False, "error": "Could not find WhatsApp document upload element."}
 
-        logger.info(f"Uploading PDF file: {pdf_path}")
+        print(f"[WhatsAppBot] Uploading PDF file '{pdf_path}' to target input...")
         target_input.set_input_files(pdf_path)
 
-        # 3. Wait for send button in preview screen
-        time.sleep(2)
+        # 3. Wait for attachment preview screen
+        time.sleep(3)
+        self._page.screenshot(path="scratch/preview_attempt.png")
+
+        send_btn_selectors = [
+            "span[data-icon='send']",
+            "span[data-icon='wds-ic-send-filled']",
+            "div[aria-label='Send']",
+            "button[aria-label='Send']",
+            "[data-testid='send']",
+            "div[role='button'][aria-label='Send']",
+            "span[data-icon='send-light']",
+            "button:has(span[data-icon*='send'])"
+        ]
+
         send_btn = None
-        for _ in range(15):
-            send_btn = self._page.query_selector("span[data-icon='send'], div[aria-label='Send'], button:has(span[data-icon='send'])")
+        for _ in range(10):
+            for sel in send_btn_selectors:
+                send_btn = self._page.query_selector(sel)
+                if send_btn:
+                    print(f"[WhatsAppBot] Found send button with selector: {sel}")
+                    break
             if send_btn:
                 break
             time.sleep(1)
 
-        if not send_btn:
-            return {"success": False, "error": "Attachment preview did not appear."}
-
-        # Type optional short caption
-        caption_input = self._page.query_selector("div[contenteditable='true'][data-tab='10'], div[aria-placeholder*='Add a caption']")
+        # Type optional short caption if caption input exists
+        caption_input = self._page.query_selector("div[contenteditable='true'][data-tab='10'], div[aria-placeholder*='Add a caption'], div[aria-label*='Add a caption']")
         if caption_input:
             try:
                 caption_input.fill(f"Official Contract: {filename} • System Generated")
+                time.sleep(0.5)
             except Exception:
                 pass
 
-        logger.info("Clicking Send for PDF attachment...")
-        send_btn.click()
+        if send_btn:
+            print("[WhatsAppBot] Clicking send button in attachment preview...")
+            send_btn.click()
+        else:
+            print("[WhatsAppBot] Send button not matched by selector, pressing keyboard Enter to send...")
+            self._page.keyboard.press("Enter")
+
         time.sleep(3)
 
         # 4. Also send formatted text details as a follow-up message in chat

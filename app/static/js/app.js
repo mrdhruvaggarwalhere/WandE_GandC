@@ -1246,6 +1246,8 @@ Phone: 94619-40113 / 94619-40114`
       sendBtn.innerHTML = '<span class="spinner-sm" style="display: inline-block; width: 14px; height: 14px; border: 2px solid #000; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> <span>Sending PDF...</span>';
     }
 
+    this.showToast(`Delivering official PDF to +${phoneDigits} on WhatsApp... please wait`, 'info', 8000);
+
     try {
       const resp = await fetch('/api/whatsapp/send-document', {
         method: 'POST',
@@ -1258,7 +1260,7 @@ Phone: 94619-40113 / 94619-40114`
       });
       const result = await resp.json();
 
-      if (result.success) {
+      if (resp.ok && result.success) {
         this.showToast(`✓ PDF Contract delivered directly to +${phoneDigits} on WhatsApp!`, 'success', 5000);
         document.getElementById('modal-dispatch')?.classList.remove('active');
         this.logDispatchEvent('WHATSAPP_AUTO', phoneDigits);
@@ -1266,7 +1268,7 @@ Phone: 94619-40113 / 94619-40114`
         if (result.status === 'GATEWAY_NOT_CONFIGURED' || result.status === 'NEEDS_QR') {
           this.openWhatsAppQrModal();
         } else {
-          this.showToast(`WhatsApp Send Error: ${result.error || result.message || 'Failed to send'}`, 'danger', 6000);
+          this.showToast(`WhatsApp Send: ${result.error || result.message || 'Failed to send document'}`, 'danger', 7000);
         }
       }
     } catch (err) {
