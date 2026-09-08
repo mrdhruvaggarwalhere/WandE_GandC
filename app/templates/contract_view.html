@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bargain Confirmation [{{bgn_code}}] — Ganesh & Company</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #0B0F19;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #F8FAFC;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+    .top-action-bar {
+      max-width: 800px;
+      margin: 0 auto 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 12px 18px;
+    }
+    .badge-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      color: #F59E0B;
+    }
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .action-btn {
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+    .btn-primary {
+      background: #10B981;
+      color: #0B0F19;
+      border-color: #10B981;
+    }
+    .btn-primary:hover {
+      background: #059669;
+    }
+    .btn-secondary {
+      background: #1F2937;
+      color: #F8FAFC;
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+    .btn-secondary:hover {
+      background: #374151;
+    }
+    .btn-whatsapp {
+      background: #25D366;
+      color: #0B0F19;
+      font-weight: 700;
+    }
+    .btn-whatsapp:hover {
+      background: #1EBE5D;
+    }
+    
+    /* Document Container */
+    .contract-view-wrapper {
+      background: #FFFFFF;
+      color: #111827;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 36px 40px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+      border-radius: 6px;
+      font-family: 'Times New Roman', Times, serif;
+      position: relative;
+    }
+
+    .contract-jurisdiction {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-decoration: underline;
+      margin-bottom: 12px;
+      color: #111827;
+      text-transform: uppercase;
+    }
+
+    .contract-header-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 2px solid #111827;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+
+    .contract-emblem-area {
+      width: 70px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+    .contract-emblem-area svg {
+      width: 54px;
+      height: 54px;
+    }
+
+    .contract-firm-details {
+      flex: 1;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .contract-firm-title {
+      font-family: 'Cinzel', 'Playfair Display', serif;
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      color: #111827;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .contract-sub-box {
+      display: inline-block;
+      align-self: center;
+      border: 1px solid #111827;
+      padding: 2px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      letter-spacing: 0.03em;
+    }
+
+    .contract-address {
+      font-size: 11px;
+      font-weight: 600;
+      color: #1F2937;
+    }
+
+    .contract-contact-strip {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: #1F2937;
+    }
+
+    .contract-doc-title {
+      text-align: center;
+      font-family: 'Cinzel', 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-decoration: underline;
+      margin: 14px 0;
+      text-transform: uppercase;
+    }
+
+    .contract-grid-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      border: 1.5px solid #111827;
+    }
+
+    .contract-grid-table td {
+      padding: 8px 12px;
+      border: 1px solid #111827;
+      font-size: 12.5px;
+      line-height: 1.4;
+      vertical-align: top;
+    }
+
+    .contract-grid-table td.key-col {
+      width: 32%;
+      font-weight: 800;
+      text-transform: uppercase;
+      background-color: #F8FAFC;
+      letter-spacing: 0.02em;
+    }
+
+    .contract-grid-table td.val-col {
+      font-weight: 600;
+      color: #000000;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .contract-signature-block {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 24px;
+      margin-bottom: 20px;
+    }
+
+    .signature-box {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 36px;
+    }
+
+    .sig-header {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .sig-title {
+      font-size: 12px;
+      font-weight: 700;
+      border-top: 1px solid #111827;
+      padding-top: 4px;
+      min-width: 140px;
+      text-align: center;
+    }
+
+    .contract-legal-clauses {
+      border-top: 1.5px solid #111827;
+      padding-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .contract-legal-title {
+      font-size: 10.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      text-decoration: underline;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+    }
+
+    .clause-item {
+      font-size: 9.5px;
+      line-height: 1.35;
+      color: #1F2937;
+      text-align: justify;
+    }
+
+    .contract-system-footer {
+      margin-top: 14px;
+      padding-top: 8px;
+      border-top: 1.5px dashed #64748B;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .contract-system-notice {
+      font-size: 10px;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .contract-system-meta {
+      font-size: 8.5px;
+      color: #475569;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.02em;
+    }
+
+    @media print {
+      body {
+        background: #FFFFFF !important;
+        padding: 0 !important;
+      }
+      .top-action-bar {
+        display: none !important;
+      }
+      .contract-view-wrapper {
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        max-width: 100% !important;
+        padding: 20px 24px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Action Bar for Counterparties / Clients -->
+  <div class="top-action-bar">
+    <div class="badge-brand">
+      <span>🏛️ GANESH &amp; COMPANY</span>
+      <span style="font-size: 12px; color: #94A3B8; font-weight: normal;">• Canvassing Agents</span>
+    </div>
+    <div class="btn-group">
+      <button class="action-btn btn-primary" onclick="downloadPDF()">
+        📥 Download System-Generated PDF
+      </button>
+      <button class="action-btn btn-secondary" onclick="window.print()">
+        🖨️ Print
+      </button>
+      <button class="action-btn btn-whatsapp" onclick="shareContract()">
+        💬 Share on WhatsApp
+      </button>
+    </div>
+  </div>
+
+  <!-- The Printable Document Container -->
+  <div class="contract-view-wrapper" id="printable-contract-area">
+    <!-- Top Center Jurisdiction -->
+    <div class="contract-jurisdiction">
+      ALL SUBJECT TO SRI GANGANAGAR JURISDICTION
+    </div>
+
+    <!-- Banner Header -->
+    <div class="contract-header-banner">
+      <!-- Left Sacred Ganesha Emblem -->
+      <div class="contract-emblem-area">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="46" fill="#FFFFFF" stroke="#000000" stroke-width="2.5"/>
+          <path d="M50 16C53 16 56 18 56 22C56 26 52 28 50 28C48 28 44 26 44 22C44 18 47 16 50 16Z" fill="#000000"/>
+          <path d="M50 28C60 28 68 34 68 45C68 56 60 62 52 64C48 65 48 70 52 74C56 78 62 76 66 74" stroke="#000000" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M42 36C35 39 32 46 32 54C32 64 40 70 48 70C54 70 58 66 58 60C58 52 48 48 44 42" stroke="#000000" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M46 32H54" stroke="#000000" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="50" cy="22" r="2" fill="#000000"/>
+          <path d="M38 24C34 26 31 30 31 35C31 40 34 44 38 46" stroke="#000000" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <!-- Center Firm Details -->
+      <div class="contract-firm-details">
+        <h1 class="contract-firm-title">GANESH &amp; COMPANY</h1>
+        <div class="contract-sub-box">Convassing Agent All Kind of Edible Oil &amp; Oil Cake</div>
+        <div class="contract-address">House No.2 Friends Colony, Opp.Bahal Petrol Pump, SRIGANGANAGAR-335001</div>
+        <div class="contract-contact-strip">
+          Mob. 94619-40113, 94619-40114, 94619-40115 Sanjay Kumar Aggarwal &bull; Email: ganeshsgnr@rediffmail.com
+        </div>
+      </div>
+    </div>
+
+    <!-- Document Title -->
+    <div class="contract-doc-title">BARGAIN CONFIRMATION</div>
+
+    <!-- 2-Column Key-Value Grid -->
+    <table class="contract-grid-table">
+      <tbody>
+        <tr>
+          <td class="key-col">Bargain No.</td>
+          <td class="val-col mono">{{bgn_code}}</td>
+        </tr>
+        <tr>
+          <td class="key-col">Date</td>
+          <td class="val-col mono">{{deal_date}}</td>
+        </tr>
+        <tr>
+          <td class="key-col">Seller</td>
+          <td class="val-col">{{seller_name}} ({{seller_station}})</td>
+        </tr>
+        <tr>
+          <td class="key-col">Buyer</td>
+          <td class="val-col">{{buyer_name}} ({{buyer_station}})</td>
+        </tr>
+        <tr>
+          <td class="key-col">Commodity</td>
+          <td class="val-col">{{product_name}}</td>
+        </tr>
+        <tr>
+          <td class="key-col">Quantity</td>
+          <td class="val-col mono">{{quantity_tonnes}} Tons ({{quantity_qtl}} Quintals)</td>
+        </tr>
+        <tr>
+          <td class="key-col">Rate</td>
+          <td class="val-col mono">₹{{rate_per_qtl}} + GST Per Qt.</td>
+        </tr>
+        <tr>
+          <td class="key-col">Advance Payment Date</td>
+          <td class="val-col mono">{{advance_payment_date}}</td>
+        </tr>
+        <tr>
+          <td class="key-col">Delivery Condition</td>
+          <td class="val-col">{{delivery_condition}}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Signature Block -->
+    <div class="contract-signature-block">
+      <div class="signature-box">
+        <span class="sig-header">For Ganesh &amp; Company</span>
+        <span class="sig-title">Proprietor</span>
+      </div>
+    </div>
+
+    <!-- Legal Terms & Conditions (Footer) -->
+    <div class="contract-legal-clauses">
+      <div class="contract-legal-title">TERMS &amp; CONDITIONS:</div>
+      <div class="clause-item"><strong>1.</strong> This contract is confirmed by us as Canvassing Agents between the Buyer and Seller above named, subject to the mutual trade rules and customs of the Sri Ganganagar Mandi.</div>
+      <div class="clause-item"><strong>2.</strong> Advance payment must be remitted strictly by the Buyer on or before the due date stipulated above. In default, Seller reserves the right to cancel or resell the goods at Buyer's risk and cost.</div>
+      <div class="clause-item"><strong>3.</strong> Delivery and lifting shall be effected strictly as per the delivery schedule above. Demurrage, detention, and leakage charges during transit shall be borne as per mutual agreement.</div>
+      <div class="clause-item"><strong>4.</strong> Quality dispute, weight shortage or FFA variation if any, must be reported in writing within 24 hours of tanker arrival at the destination with authorized independent surveyor report.</div>
+      <div class="clause-item"><strong>5.</strong> As Canvassing Agents, Ganesh &amp; Company facilitates deals in good faith and does not guarantee solvency, financial default, or contractual performance of either counterparty.</div>
+      <div class="clause-item"><strong>6.</strong> In the event of any arbitration, dispute, claim or difference arising out of or in connection with this bargain confirmation, the courts at <u>SRI GANGANAGAR (RAJASTHAN)</u> alone shall have exclusive jurisdiction.</div>
+    </div>
+
+    <!-- System Generated Notice at the Bottom of the PDF -->
+    <div class="contract-system-footer">
+      <div class="contract-system-notice">
+        *** THIS BARGAIN CONFIRMATION IS A SYSTEM GENERATED DOCUMENT &bull; NO PHYSICAL SIGNATURE IS REQUIRED ***
+      </div>
+      <div class="contract-system-meta">
+        Computer Generated via Ganesh &amp; Company Platform &bull; Valid across all Mandis &bull; Subject to Sri Ganganagar (Raj.) Jurisdiction
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function downloadPDF() {
+      const element = document.getElementById('printable-contract-area');
+      const filename = 'Bargain_Confirmation_{{bgn_code}}.pdf';
+      if (window.html2pdf) {
+        const opt = {
+          margin: [8, 10, 8, 10],
+          filename: filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+      } else {
+        window.print();
+      }
+    }
+
+    function shareContract() {
+      const text = `*BARGAIN CONFIRMATION — GANESH & COMPANY*\n*Bargain No:* {{bgn_code}}\n*Commodity:* {{product_name}}\n*Quantity:* {{quantity_tonnes}} MT\n*Rate:* ₹{{rate_per_qtl}}/Qtl + GST\n📄 Official Contract: ${window.location.href}`;
+      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
+    }
+  </script>
+</body>
+</html>

@@ -755,6 +755,19 @@
             </button>
           </div>
 
+          <!-- WhatsApp Attachment Clarification & Instructions Card -->
+          <div style="background: rgba(16, 185, 129, 0.07); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 10px 14px; display: flex; gap: 10px; align-items: flex-start;">
+            <i data-lucide="info" style="width: 18px; height: 18px; color: var(--emerald); flex-shrink: 0; margin-top: 2px;"></i>
+            <div style="font-size: 12px; line-height: 1.45;">
+              <div style="font-weight: 700; color: var(--emerald); margin-bottom: 2px;">How the PDF is delivered:</div>
+              <div style="color: var(--text-muted);">
+                &bull; <strong>1. Automatic PDF Download:</strong> The system-generated PDF is automatically downloaded to your computer.<br>
+                &bull; <strong>2. In WhatsApp Web:</strong> Web browsers only pass text; simply <strong>drag &amp; drop</strong> the downloaded PDF into WhatsApp, or click <strong>📎 (Attach) &gt; Document</strong>.<br>
+                &bull; <strong>3. Online Link Included:</strong> The message includes a direct link so the counterparty can view &amp; download the official PDF directly on their phone!
+              </div>
+            </div>
+          </div>
+
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group">
               <label class="form-label">
@@ -779,14 +792,14 @@
             </div>
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
-            <span style="font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px;">
-              <i data-lucide="shield-check" style="width: 14px; height: 14px; color: var(--emerald);"></i>
-              Dispatches via WhatsApp Web &amp; Email with System Generated PDF confirmation
-            </span>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-native-share-both" style="display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="share-2" style="width: 14px; height: 14px; color: var(--emerald);"></i>
+              <span>📲 Share PDF File (App/Mobile)</span>
+            </button>
             <button class="btn btn-primary btn-sm" id="btn-dispatch-both-action" style="background: linear-gradient(135deg, #10B981, #059669); font-weight: 700;">
               <i data-lucide="send" style="width: 14px; height: 14px;"></i>
-              <span>🚀 Send PDF to Both (WhatsApp &amp; Email)</span>
+              <span>🚀 Send to Both (WhatsApp &amp; Email)</span>
             </button>
           </div>
         </div>
@@ -808,6 +821,16 @@
             </button>
           </div>
 
+          <div style="background: rgba(37, 211, 102, 0.08); border: 1px solid rgba(37, 211, 102, 0.25); border-radius: 8px; padding: 10px 14px; display: flex; gap: 10px; align-items: flex-start;">
+            <i data-lucide="info" style="width: 18px; height: 18px; color: #25D366; flex-shrink: 0; margin-top: 2px;"></i>
+            <div style="font-size: 12px; line-height: 1.45;">
+              <strong style="color: #25D366;">Attach PDF in WhatsApp Web:</strong>
+              <div style="color: var(--text-muted); margin-top: 2px;">
+                WhatsApp Web opens with the text and online PDF link. To attach the actual file, <strong>drag &amp; drop</strong> the downloaded PDF into WhatsApp, or click <strong>📎 (Attach) &gt; Document</strong>.
+              </div>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label">Recipient Phone Number (International format)</label>
             <input type="text" class="form-input mono" id="dispatch-phone" placeholder="+91 94140 51234">
@@ -818,7 +841,11 @@
               <!-- Rendered via JS -->
             </div>
           </div>
-          <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-native-share-wa" style="display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="share-2" style="width: 14px; height: 14px; color: #25D366;"></i>
+              <span>📲 Share PDF File</span>
+            </button>
             <button class="btn btn-secondary btn-sm" id="btn-copy-whatsapp">
               <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
               <span>Copy Text</span>

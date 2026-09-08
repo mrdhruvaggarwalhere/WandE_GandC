@@ -947,7 +947,9 @@ const app = {
     if (document.getElementById('dispatch-phone')) document.getElementById('dispatch-phone').value = formattedPhone;
     if (document.getElementById('dispatch-email-to')) document.getElementById('dispatch-email-to').value = emailTo;
 
-    // WhatsApp Formatted Text with System-Generated Notice
+    // WhatsApp Formatted Text with System-Generated Notice and Direct Online Link
+    const origin = window.location.origin;
+    const contractUrl = `${origin}/contract/${deal.id}`;
     const waText = 
 `*BARGAIN CONFIRMATION — GANESH & COMPANY*
 *Sri Ganganagar, Rajasthan*
@@ -962,7 +964,8 @@ const app = {
 *Advance Payment Date:* ${advance}
 *Delivery Condition:* ${delivery}
 ━━━━━━━━━━━━━━━━━━━━━━━━
-📄 *Attached:* ${pdfName}
+📄 *Official Document:* ${pdfName}
+🔗 *View / Download PDF Online:* ${contractUrl}
 ⚠️ *Note:* This PDF is a system-generated document and does not require a physical signature.
 _All deals subject to Sri Ganganagar Jurisdiction._
 _For inquiries contact: Sanjay Kumar Aggarwal (94619-40113)_`;
@@ -1074,8 +1077,63 @@ Phone: 94619-40113 / 94619-40114`
     await this.logDispatchEvent('WHATSAPP', phoneInput);
     await this.logDispatchEvent('EMAIL', emailTo);
 
-    this.showToast(`✅ System-generated PDF dispatched to both WhatsApp & Email!`, 'success');
+    this.showToast(`📥 PDF downloaded! In WhatsApp Web, drag & drop the PDF into the chat or click 📎 (Attach) > Document.`, 'info', 7000);
     document.getElementById('modal-dispatch')?.classList.remove('active');
+  },
+
+  async sharePdfDirectly() {
+    if (!this.selectedDealForDispatch) return;
+    const deal = this.selectedDealForDispatch;
+    const bgn = deal.bgn_code || deal.id;
+    const filename = `Bargain_Confirmation_${bgn}.pdf`;
+    const element = document.getElementById('printable-contract-area');
+    const waText = document.getElementById('both-preview-box')?.textContent || document.getElementById('whatsapp-preview-box')?.textContent || '';
+
+    if (!element || !window.html2pdf) {
+      this.downloadContractPdf(deal.id);
+      return;
+    }
+
+    this.showToast('Preparing official PDF file for sharing...', 'info');
+
+    try {
+      const opt = {
+        margin: [8, 10, 8, 10],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      const pdfWorker = html2pdf().set(opt).from(element);
+      const pdfBlob = await pdfWorker.output('blob');
+      const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          files: [pdfFile],
+          title: `Bargain Confirmation [${bgn}]`,
+          text: waText
+        });
+        this.showToast('✅ Contract PDF shared via native app successfully!', 'success');
+        this.logDispatchEvent('WHATSAPP');
+      } else {
+        // Fallback: download PDF and open WhatsApp Web with clear guidance
+        this.downloadContractPdf(deal.id);
+        const phoneInput = document.getElementById('dispatch-both-phone')?.value || document.getElementById('dispatch-phone')?.value || '';
+        const phoneDigits = phoneInput.replace(/[^0-9]/g, '');
+        if (phoneDigits) {
+          const waUrl = `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${encodeURIComponent(waText)}`;
+          window.open(waUrl, '_blank');
+        }
+        this.showToast('📥 PDF downloaded! In WhatsApp Web, drag & drop the PDF into the chat or click 📎 > Document.', 'info', 7000);
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.warn('Native share fallback to download:', err);
+        this.downloadContractPdf(deal.id);
+      }
+    }
   },
 
   openEmailClient() {
@@ -1928,6 +1986,14 @@ Phone: 94619-40113 / 94619-40114`
       this.sendPdfToBoth();
     });
 
+    document.getElementById('btn-native-share-both')?.addEventListener('click', () => {
+      this.sharePdfDirectly();
+    });
+
+    document.getElementById('btn-native-share-wa')?.addEventListener('click', () => {
+      this.sharePdfDirectly();
+    });
+
     // WhatsApp tab actions
     document.getElementById('btn-copy-whatsapp')?.addEventListener('click', () => {
       const text = document.getElementById('whatsapp-preview-box')?.textContent || '';
@@ -1937,6 +2003,8 @@ Phone: 94619-40113 / 94619-40114`
     });
 
     document.getElementById('btn-open-whatsapp-web')?.addEventListener('click', () => {
+      this.downloadContractPdf(this.selectedDealForDispatch?.id);
+      this.showToast('📥 PDF downloaded! In WhatsApp Web, drag & drop the PDF or click 📎 (Attach) > Document.', 'info', 7000);
       this.logDispatchEvent('WHATSAPP');
     });
 

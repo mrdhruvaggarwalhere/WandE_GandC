@@ -75,6 +75,11 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             if os.path.exists(file_path) and os.path.isfile(file_path):
                 return self.serve_file(file_path)
 
+        # Serve Standalone Online Contract View
+        if path.startswith('/contract/'):
+            deal_id = path[len('/contract/'):].strip('/')
+            return self.serve_standalone_contract(deal_id)
+
         # Serve SPA Index
         if path in ('/', '/index.html', '/deals', '/bargains', '/parties', '/dispatches', '/market-rates', '/reports', '/trash', '/chains', '/billing', '/ledger', '/masters', '/busy', '/tests'):
             index_path = os.path.join(TEMPLATES_DIR, "index.html")
@@ -412,6 +417,65 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-Length', str(len(content)))
         self.end_headers()
         self.wfile.write(content)
+
+    def serve_standalone_contract(self, deal_id: str):
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT 
+                d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,
+                b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station,
+                s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
+                p.name AS product_name
+            FROM deals d
+            JOIN parties b ON d.buyer_id = b.id
+            JOIN parties s ON d.seller_id = s.id
+            JOIN products p ON d.product_id = p.id
+            WHERE d.id = ? OR d.bgn_code = ?
+        """, (deal_id, deal_id))
+        row = cur.fetchone()
+        conn.close()
+
+        if not row:
+            return self.send_error_json(f"Bargain contract {deal_id} not found", 404)
+
+        deal = dict(row)
+        tpl_path = os.path.join(TEMPLATES_DIR, "contract_view.html")
+        if not os.path.exists(tpl_path):
+            return self.send_error_json("Contract template missing", 500)
+
+        with open(tpl_path, "r", encoding="utf-8") as f:
+            html = f.read()
+
+        bgn = deal.get('bgn_code') or deal.get('id')
+        qty_qtl = float(deal.get('quantity_qtl', 0))
+        qty_tonnes = float(deal.get('quantity_tonnes') or (qty_qtl * 0.1))
+        rate = f"{round(float(deal.get('rate_per_qtl', 0))):,}"
+
+        replacements = {
+            "{{bgn_code}}": str(bgn),
+            "{{deal_date}}": str(deal.get('deal_date') or ''),
+            "{{seller_name}}": str(deal.get('seller_name') or ''),
+            "{{seller_station}}": str(deal.get('seller_station') or ''),
+            "{{buyer_name}}": str(deal.get('buyer_name') or ''),
+            "{{buyer_station}}": str(deal.get('buyer_station') or ''),
+            "{{product_name}}": str(deal.get('product_name') or ''),
+            "{{quantity_tonnes}}": f"{qty_tonnes:g}",
+            "{{quantity_qtl}}": f"{qty_qtl:g}",
+            "{{rate_per_qtl}}": rate,
+            "{{advance_payment_date}}": str(deal.get('advance_payment_date') or deal.get('deal_date') or ''),
+            "{{delivery_condition}}": str(deal.get('delivery_condition') or 'Ex-Mill Lifting as per contract')
+        }
+
+        for placeholder, val in replacements.items():
+            html = html.replace(placeholder, val)
+
+        response_bytes = html.encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_header('Content-Length', str(len(response_bytes)))
+        self.end_headers()
+        self.wfile.write(response_bytes)
 
     def cancel_deal_transaction(self, deal_id: str, reason: str, actor_name: str, actor_role: str) -> Dict[str, Any]:
         conn = get_db_connection()
