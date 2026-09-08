@@ -197,6 +197,51 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 conn.close()
                 return self.send_json_response(chains)
 
+            elif path.startswith('/api/deals/') and path.endswith('/pdf'):
+                deal_id = path.split('/')[3]
+                cur.execute("""
+                    SELECT 
+                        d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,
+                        b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station,
+                        s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
+                        p.name AS product_name
+                    FROM deals d
+                    JOIN parties b ON d.buyer_id = b.id
+                    JOIN parties s ON d.seller_id = s.id
+                    JOIN products p ON d.product_id = p.id
+                    WHERE d.id = ? OR d.bgn_code = ?
+                """, (deal_id, deal_id))
+                deal_row = cur.fetchone()
+                conn.close()
+                if not deal_row:
+                    return self.send_error_json("Deal not found", 404)
+                deal_dict = dict(deal_row)
+                from app.core.pdf_generator import generate_deal_contract_pdf
+                pdf_data = generate_deal_contract_pdf(deal_dict)
+                bgn = deal_dict.get('bgn_code') or deal_dict.get('id')
+                filename = f"Bargain_Confirmation_{bgn}.pdf"
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/pdf')
+                self.send_header('Content-Disposition', f'inline; filename="{filename}"')
+                self.send_header('Content-Length', str(len(pdf_data)))
+                self.end_headers()
+                self.wfile.write(pdf_data)
+                return
+
+            elif path == '/api/whatsapp/config':
+                conn.close()
+                from app.core.whatsapp_gateway import get_whatsapp_config
+                cfg = get_whatsapp_config()
+                token = cfg.get('api_token', '')
+                masked_token = f"{token[:4]}••••{token[-4:]}" if len(token) > 8 else ("••••" if token else "")
+                return self.send_json_response({
+                    'provider': cfg.get('provider', 'GREEN_API'),
+                    'instance_id': cfg.get('instance_id', ''),
+                    'masked_token': masked_token,
+                    'is_enabled': bool(cfg.get('is_enabled')),
+                    'has_token': bool(token)
+                })
+
             elif path.startswith('/api/deal-chains/'):
                 chain_id = path.split('/')[-1]
                 conn.close()
@@ -341,6 +386,63 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 instruction_id = path.split('/')[-1]
                 payload = generate_busy_xml_voucher(instruction_id)
                 return self.send_json_response(payload)
+
+            elif path == '/api/whatsapp/config':
+                from app.core.whatsapp_gateway import save_whatsapp_config
+                res = save_whatsapp_config(body)
+                return self.send_json_response(res)
+
+            elif path == '/api/whatsapp/send-document':
+                deal_id = body.get('deal_id')
+                phone = body.get('phone', '')
+                caption = body.get('caption', '')
+                if not deal_id or not phone:
+                    return self.send_error_json("deal_id and phone are required", 400)
+
+                conn = get_db_connection()
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT 
+                        d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,
+                        b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station,
+                        s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
+                        p.name AS product_name
+                    FROM deals d
+                    JOIN parties b ON d.buyer_id = b.id
+                    JOIN parties s ON d.seller_id = s.id
+                    JOIN products p ON d.product_id = p.id
+                    WHERE d.id = ? OR d.bgn_code = ?
+                """, (deal_id, deal_id))
+                d_row = cur.fetchone()
+                conn.close()
+
+                if not d_row:
+                    return self.send_error_json("Deal not found", 404)
+
+                deal_dict = dict(d_row)
+                from app.core.pdf_generator import generate_deal_contract_pdf
+                from app.core.whatsapp_gateway import send_whatsapp_pdf_document
+
+                pdf_bytes = generate_deal_contract_pdf(deal_dict)
+                bgn = deal_dict.get('bgn_code') or deal_dict.get('id')
+                filename = f"Bargain_Confirmation_{bgn}.pdf"
+
+                if not caption:
+                    caption = f"*BARGAIN CONFIRMATION — GANESH & COMPANY*\nBargain No: {bgn}\nCommodity: {deal_dict.get('product_name')}\nQuantity: {deal_dict.get('quantity_tonnes')} MT\nRate: Rs. {deal_dict.get('rate_per_qtl')}/Qtl + GST"
+
+                send_res = send_whatsapp_pdf_document(phone, pdf_bytes, filename, caption)
+                
+                if send_res.get('success'):
+                    api_routes.create_dispatch_log({
+                        'deal_id': deal_dict['id'],
+                        'recipient_type': 'COUNTERPARTY',
+                        'recipient_name': deal_dict.get('buyer_name'),
+                        'channel': 'WHATSAPP_AUTO',
+                        'phone_or_email': phone,
+                        'message_preview': f"Auto-delivered {filename} with PDF attachment via Gateway"
+                    }, actor_name=actor_name)
+
+                return self.send_json_response(send_res)
 
             elif path == '/api/test/run-worked-example':
                 test_results = self.execute_worked_example_acceptance_test()

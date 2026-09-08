@@ -1136,6 +1136,94 @@ Phone: 94619-40113 / 94619-40114`
     }
   },
 
+  async autoSendPdfToWhatsApp() {
+    if (!this.selectedDealForDispatch) return;
+    const deal = this.selectedDealForDispatch;
+    const phoneInput = document.getElementById('dispatch-both-phone')?.value || document.getElementById('dispatch-phone')?.value || deal.buyer_phone || '';
+    const phoneDigits = phoneInput.replace(/[^0-9]/g, '');
+
+    if (!phoneDigits) {
+      this.showToast('Please enter a valid recipient phone number', 'error');
+      return;
+    }
+
+    const caption = document.getElementById('both-preview-box')?.textContent || document.getElementById('whatsapp-preview-box')?.textContent || '';
+
+    this.showToast('🚀 Automatically uploading and delivering PDF to WhatsApp...', 'info');
+
+    try {
+      const res = await this.api('/api/whatsapp/send-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deal_id: deal.id,
+          phone: phoneDigits,
+          caption: caption
+        })
+      });
+
+      if (res.success) {
+        this.showToast(`✅ Official PDF contract automatically sent to +${phoneDigits} in WhatsApp!`, 'success', 6000);
+        document.getElementById('modal-dispatch')?.classList.remove('active');
+        this.fetchDispatchLogs();
+      } else if (res.status === 'GATEWAY_NOT_CONFIGURED') {
+        this.showToast('Connect your ₹0 Free Green API account to send directly in the background!', 'info', 6000);
+        this.openWhatsAppSettingsModal();
+      } else {
+        this.showToast(`WhatsApp Gateway: ${res.error || res.message || 'Send failed'}`, 'error', 6000);
+      }
+    } catch (err) {
+      console.error('Auto send error:', err);
+      this.showToast(`Failed to auto-send: ${err.message}`, 'error');
+    }
+  },
+
+  async openWhatsAppSettingsModal() {
+    try {
+      const cfg = await this.api('/api/whatsapp/config');
+      if (document.getElementById('wa-setting-provider')) document.getElementById('wa-setting-provider').value = cfg.provider || 'GREEN_API';
+      if (document.getElementById('wa-setting-instance')) document.getElementById('wa-setting-instance').value = cfg.instance_id || '';
+      if (document.getElementById('wa-setting-token')) document.getElementById('wa-setting-token').value = '';
+      if (document.getElementById('wa-setting-token')) document.getElementById('wa-setting-token').placeholder = cfg.has_token ? cfg.masked_token : 'Enter your API Token';
+
+      const badge = document.getElementById('wa-gateway-status-badge');
+      if (badge) {
+        if (cfg.is_enabled) {
+          badge.innerHTML = `<span style="color: #10B981; font-weight: 700;">● Connected</span> &bull; <span style="color: var(--text-dim);">Ready for automatic background PDF delivery</span>`;
+        } else {
+          badge.innerHTML = `<span style="color: #F59E0B; font-weight: 700;">● Not Connected</span> &bull; <span style="color: var(--text-dim);">Enter free credentials below to activate</span>`;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load WhatsApp config:', e);
+    }
+    document.getElementById('modal-whatsapp-settings')?.classList.add('active');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async saveWhatsAppSettings() {
+    const provider = document.getElementById('wa-setting-provider')?.value || 'GREEN_API';
+    const instance_id = document.getElementById('wa-setting-instance')?.value || '';
+    const api_token = document.getElementById('wa-setting-token')?.value || '';
+
+    try {
+      const res = await this.api('/api/whatsapp/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          instance_id,
+          api_token
+        })
+      });
+
+      this.showToast('✅ WhatsApp Gateway settings saved successfully!', 'success');
+      document.getElementById('modal-whatsapp-settings')?.classList.remove('active');
+    } catch (err) {
+      this.showToast(`Error saving settings: ${err.message}`, 'error');
+    }
+  },
+
   openEmailClient() {
     if (!this.selectedDealForDispatch) return;
     const deal = this.selectedDealForDispatch;
@@ -1992,6 +2080,34 @@ Phone: 94619-40113 / 94619-40114`
 
     document.getElementById('btn-native-share-wa')?.addEventListener('click', () => {
       this.sharePdfDirectly();
+    });
+
+    document.getElementById('btn-auto-send-both')?.addEventListener('click', () => {
+      this.autoSendPdfToWhatsApp();
+    });
+
+    document.getElementById('btn-auto-send-whatsapp')?.addEventListener('click', () => {
+      this.autoSendPdfToWhatsApp();
+    });
+
+    document.getElementById('btn-open-wa-settings')?.addEventListener('click', () => {
+      this.openWhatsAppSettingsModal();
+    });
+
+    document.getElementById('btn-open-wa-settings-both')?.addEventListener('click', () => {
+      this.openWhatsAppSettingsModal();
+    });
+
+    document.getElementById('btn-close-wa-settings')?.addEventListener('click', () => {
+      document.getElementById('modal-whatsapp-settings')?.classList.remove('active');
+    });
+
+    document.getElementById('btn-cancel-wa-settings')?.addEventListener('click', () => {
+      document.getElementById('modal-whatsapp-settings')?.classList.remove('active');
+    });
+
+    document.getElementById('btn-save-wa-settings')?.addEventListener('click', () => {
+      this.saveWhatsAppSettings();
     });
 
     // WhatsApp tab actions
