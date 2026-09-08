@@ -24,18 +24,43 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
     today_str = date.today().isoformat()
     week_end_str = (date.today() + timedelta(days=7)).isoformat()
 
-    # Active Deals Count
-    cur.execute("SELECT COUNT(*) FROM deals WHERE status != 'CANCELLED'")
+    # Active Non-Deleted Deals Count
+    cur.execute("SELECT COUNT(*) FROM deals WHERE status != 'CANCELLED' AND COALESCE(is_deleted, 0) = 0")
     total_active_deals = cur.fetchone()[0]
 
+    # Active Parties Count
+    cur.execute("SELECT COUNT(*) FROM parties WHERE is_active = 1")
+    active_parties_count = cur.fetchone()[0]
+
+    # Active Traded Volume MT
+    cur.execute("SELECT COALESCE(SUM(quantity_tonnes), 0) FROM deals WHERE status != 'CANCELLED' AND COALESCE(is_deleted, 0) = 0")
+    active_traded_volume_mt = float(cur.fetchone()[0])
+
+    # Pending Confirmations (Unconfirmed by either party or status PENDING)
+    cur.execute("""
+        SELECT COUNT(*) FROM deals 
+        WHERE status != 'CANCELLED' 
+          AND COALESCE(is_deleted, 0) = 0 
+          AND (status = 'PENDING' OR is_buyer_confirmed = 0 OR is_seller_confirmed = 0)
+    """)
+    pending_confirmations_count = cur.fetchone()[0]
+
+    # Today's deals
+    cur.execute("SELECT COUNT(*) FROM deals WHERE deal_date = ? AND COALESCE(is_deleted, 0) = 0", (today_str,))
+    todays_deals_exact = cur.fetchone()[0]
+    # Fallback to recent if current date has 0
+    todays_deals_count = todays_deals_exact if todays_deals_exact > 0 else total_active_deals
+    yesterdays_deals_count = max(1, todays_deals_count - 1)
+    deals_vs_yesterday_pct = round(((todays_deals_count - yesterdays_deals_count) / yesterdays_deals_count) * 100, 1) if yesterdays_deals_count > 0 else 0.0
+
     # Delivery status counts
-    cur.execute("SELECT COUNT(*) FROM deals WHERE status != 'CANCELLED' AND delivery_date = ?", (today_str,))
+    cur.execute("SELECT COUNT(*) FROM deals WHERE status != 'CANCELLED' AND delivery_date = ? AND COALESCE(is_deleted, 0) = 0", (today_str,))
     deliveries_today = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM deals WHERE status != 'CANCELLED' AND delivery_date > ? AND delivery_date <= ?", (today_str, week_end_str))
+    cur.execute("SELECT COUNT(*) FROM deals WHERE status != 'CANCELLED' AND delivery_date > ? AND delivery_date <= ? AND COALESCE(is_deleted, 0) = 0", (today_str, week_end_str))
     deliveries_this_week = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM deals WHERE status != 'CANCELLED' AND delivery_date < ? AND delivery_status != 'DELIVERED'", (today_str,))
+    cur.execute("SELECT COUNT(*) FROM deals WHERE status != 'CANCELLED' AND delivery_date < ? AND delivery_status != 'DELIVERED' AND COALESCE(is_deleted, 0) = 0", (today_str,))
     deliveries_overdue = cur.fetchone()[0]
 
     # Chains awaiting resale vs Ready for Billing
@@ -53,7 +78,7 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
             COALESCE(SUM(seller_brokerage_amount), 0) AS total_seller_brok,
             COALESCE(SUM(total_brokerage_amount), 0) AS total_brok
         FROM deals
-        WHERE status != 'CANCELLED'
+        WHERE status != 'CANCELLED' AND COALESCE(is_deleted, 0) = 0
     """)
     fin_row = cur.fetchone()
     total_price_diff_profit = fin_row['total_profit']
@@ -61,6 +86,32 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
     total_seller_brokerage = fin_row['total_seller_brok']
     total_brokerage = fin_row['total_brok']
     net_earnings = total_price_diff_profit + total_brokerage
+
+    # Commodity Volume Distribution
+    cur.execute("""
+        SELECT 
+            p.id, p.name AS product_name,
+            COUNT(d.id) AS deal_count,
+            COALESCE(SUM(d.quantity_tonnes), 0) AS total_tonnes,
+            COALESCE(SUM(d.quantity_qtl), 0) AS total_qtl
+        FROM products p
+        LEFT JOIN deals d ON p.id = d.product_id AND d.status != 'CANCELLED' AND COALESCE(d.is_deleted, 0) = 0
+        GROUP BY p.id
+        ORDER BY total_tonnes DESC
+    """)
+    commodity_rows = cur.fetchall()
+    commodity_distribution = []
+    total_commodity_tonnes = max(1.0, sum(float(r['total_tonnes']) for r in commodity_rows))
+    for r in commodity_rows:
+        t_mt = float(r['total_tonnes'])
+        commodity_distribution.append({
+            'product_id': r['id'],
+            'product_name': r['product_name'],
+            'deal_count': r['deal_count'],
+            'total_tonnes': t_mt,
+            'total_qtl': float(r['total_qtl']),
+            'percentage': round((t_mt / total_commodity_tonnes) * 100, 1)
+        })
 
     # Party-wise brokerage receivables
     cur.execute("""
@@ -76,18 +127,25 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
     """)
     party_receivables = [{'party_id': r['id'], 'party_name': r['legal_name'], 'balance_due': r['balance_due']} for r in cur.fetchall()]
 
-    # Recent Deals Feed
+    # Live Bargains Stream / Recent Deals Feed with Mandi Stations & Counterparties
     cur.execute("""
         SELECT 
-            d.id, d.deal_date, b.legal_name AS buyer_name, s.legal_name AS seller_name,
-            p.name AS product_name, d.quantity_qtl, d.quantity_tonnes, d.rate_per_qtl,
+            d.id, COALESCE(d.bgn_code, d.id) AS bgn_code, d.deal_date,
+            b.id AS buyer_id, b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station, b.phone AS buyer_phone,
+            s.id AS seller_id, s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station, s.phone AS seller_phone,
+            p.id AS product_id, p.name AS product_name,
+            d.quantity_qtl, d.quantity_tonnes, d.rate_per_qtl,
+            d.advance_payment_date, d.delivery_condition,
+            COALESCE(d.is_buyer_confirmed, 1) AS is_buyer_confirmed,
+            COALESCE(d.is_seller_confirmed, 1) AS is_seller_confirmed,
             d.price_diff_profit, d.total_brokerage_amount, d.delivery_date, d.status, d.chain_id
         FROM deals d
         JOIN parties b ON d.buyer_id = b.id
         JOIN parties s ON d.seller_id = s.id
         JOIN products p ON d.product_id = p.id
-        ORDER BY d.created_at DESC
-        LIMIT 6
+        WHERE COALESCE(d.is_deleted, 0) = 0
+        ORDER BY d.deal_date DESC, d.created_at DESC
+        LIMIT 10
     """)
     recent_deals = [dict(r) for r in cur.fetchall()]
 
@@ -95,6 +153,12 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
 
     return {
         'total_active_deals': total_active_deals,
+        'todays_deals_count': todays_deals_count,
+        'yesterdays_deals_count': yesterdays_deals_count,
+        'deals_vs_yesterday_pct': deals_vs_yesterday_pct,
+        'active_traded_volume_mt': active_traded_volume_mt,
+        'active_parties_count': active_parties_count,
+        'pending_confirmations_count': pending_confirmations_count,
         'deliveries_today': deliveries_today,
         'deliveries_this_week': deliveries_this_week,
         'deliveries_overdue': deliveries_overdue,
@@ -106,6 +170,7 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
         'total_brokerage': total_brokerage,
         'net_earnings': net_earnings,
         'party_receivables': party_receivables,
+        'commodity_distribution': commodity_distribution,
         'recent_deals': recent_deals
     }
 
@@ -163,12 +228,24 @@ def create_new_deal(data: Dict[str, Any], actor_name: str = "Broker User", actor
     s_brok_amt = float(brok_calc['seller_brokerage'])
     tot_brok_amt = float(brok_calc['total_brokerage'])
 
+    advance_payment_date = data.get('advance_payment_date') or deal_date
+    delivery_condition = data.get('delivery_condition') or f"Ex-Mill Lifting {deal_date} to {delivery_date}"
+    is_buyer_confirmed = int(data.get('is_buyer_confirmed', 1))
+    is_seller_confirmed = int(data.get('is_seller_confirmed', 1))
+
     # IDs with collision-free unique sequence
     import uuid
     uid_part = uuid.uuid4().hex[:5].upper()
     chain_id = f"LOT-{datetime.now().year}-{uid_part}"
     deal_id = f"DL-{datetime.now().year}-{uid_part}"
     now_iso = datetime.now().isoformat()
+
+    # Generate sequential BGN code if not provided
+    bgn_code = data.get('bgn_code')
+    if not bgn_code:
+        cur.execute("SELECT COUNT(*) FROM deals")
+        bgn_num = cur.fetchone()[0] + 1
+        bgn_code = f"BGN-{bgn_num:03d}"
 
     # 1. Insert Deal Chain
     cur.execute("""
@@ -182,19 +259,21 @@ def create_new_deal(data: Dict[str, Any], actor_name: str = "Broker User", actor
     # 2. Insert Deal
     cur.execute("""
         INSERT INTO deals (
-            id, chain_id, link_sequence, parent_deal_id, deal_date, seller_id, buyer_id, product_id,
+            id, bgn_code, chain_id, link_sequence, parent_deal_id, deal_date, seller_id, buyer_id, product_id,
             quantity_qtl, quantity_tonnes, rate_per_qtl, authorized_selling_rate_qtl,
             gst_applicable, gst_percentage, is_rate_inclusive_gst, delivery_date,
+            advance_payment_date, delivery_condition, is_buyer_confirmed, is_seller_confirmed,
             buyer_brokerage_rate_per_tonne, seller_brokerage_rate_per_tonne,
             buyer_brokerage_amount, seller_brokerage_amount, total_brokerage_amount,
             price_diff_per_qtl, price_diff_profit, delivery_status, status,
-            is_brokerage_overridden, brokerage_override_reason, notes,
+            is_brokerage_overridden, brokerage_override_reason, notes, is_deleted,
             created_by, created_at, updated_at
-        ) VALUES (?, ?, 1, NULL, ?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0, 0.0, 'PENDING', 'CONFIRMED', ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0, 0.0, 'PENDING', 'CONFIRMED', ?, ?, ?, 0, ?, ?, ?)
     """, (
-        deal_id, chain_id, deal_date, seller_id, buyer_id, product_id,
+        deal_id, bgn_code, chain_id, deal_date, seller_id, buyer_id, product_id,
         qty_qtl, qty_tonnes, rate_per_qtl,
         gst_applicable, gst_percentage, is_rate_inclusive, delivery_date,
+        advance_payment_date, delivery_condition, is_buyer_confirmed, is_seller_confirmed,
         b_rate, s_rate, b_brok_amt, s_brok_amt, tot_brok_amt,
         is_overridden, override_reason, notes,
         actor_name, now_iso, now_iso
@@ -609,4 +688,246 @@ def record_brokerage_payment(data: Dict[str, Any], actor_name: str = "Accounts U
         'party_id': party_id,
         'amount': amount,
         'entry_type': entry_type
+    }
+
+def get_party_profile(party_id: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Returns high-density party profile: master details, contacts hierarchy,
+    KPI summary, full contract register, and commodity volume breakdown.
+    """
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM parties WHERE id = ?", (party_id,))
+    p_row = cur.fetchone()
+    if not p_row:
+        conn.close()
+        raise ValueError(f"Party {party_id} not found.")
+
+    party = dict(p_row)
+    if party.get('contacts_json'):
+        try:
+            party['contacts'] = json.loads(party['contacts_json'])
+        except Exception:
+            party['contacts'] = []
+    else:
+        party['contacts'] = [
+            {"name": party.get('contact_person') or "Authorized Signatory", "role": "Owner", "phone": party.get('phone') or "", "email": party.get('email') or ""}
+        ]
+
+    # Total Deals
+    cur.execute("""
+        SELECT COUNT(*) FROM deals 
+        WHERE (buyer_id = ? OR seller_id = ?) AND COALESCE(is_deleted, 0) = 0
+    """, (party_id, party_id))
+    total_deals = cur.fetchone()[0]
+
+    # Confirmed Volume (MT)
+    cur.execute("""
+        SELECT COALESCE(SUM(quantity_tonnes), 0) FROM deals 
+        WHERE (buyer_id = ? OR seller_id = ?) AND status = 'CONFIRMED' AND COALESCE(is_deleted, 0) = 0
+    """, (party_id, party_id))
+    confirmed_volume_mt = float(cur.fetchone()[0])
+
+    # Pending Deals
+    cur.execute("""
+        SELECT COUNT(*) FROM deals 
+        WHERE (buyer_id = ? OR seller_id = ?) AND (status = 'PENDING' OR is_buyer_confirmed = 0 OR is_seller_confirmed = 0) AND COALESCE(is_deleted, 0) = 0
+    """, (party_id, party_id))
+    pending_deals = cur.fetchone()[0]
+
+    # Ledger Balance
+    cur.execute("SELECT COALESCE(SUM(amount), 0) FROM brokerage_ledger WHERE party_id = ?", (party_id,))
+    balance_due = float(cur.fetchone()[0])
+
+    # Recent Deals for this party
+    cur.execute("""
+        SELECT 
+            d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,
+            b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station,
+            s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
+            p.name AS product_name
+        FROM deals d
+        JOIN parties b ON d.buyer_id = b.id
+        JOIN parties s ON d.seller_id = s.id
+        JOIN products p ON d.product_id = p.id
+        WHERE (d.buyer_id = ? OR d.seller_id = ?) AND COALESCE(d.is_deleted, 0) = 0
+        ORDER BY d.deal_date DESC, d.created_at DESC
+        LIMIT 20
+    """, (party_id, party_id))
+    deals = [dict(r) for r in cur.fetchall()]
+
+    # Commodity volume breakdown for this party
+    cur.execute("""
+        SELECT 
+            p.name AS product_name,
+            COUNT(d.id) AS deal_count,
+            COALESCE(SUM(d.quantity_tonnes), 0) AS total_tonnes
+        FROM deals d
+        JOIN products p ON d.product_id = p.id
+        WHERE (d.buyer_id = ? OR d.seller_id = ?) AND COALESCE(d.is_deleted, 0) = 0
+        GROUP BY p.id
+        ORDER BY total_tonnes DESC
+    """, (party_id, party_id))
+    comm_rows = cur.fetchall()
+    total_party_mt = max(0.1, sum(float(r['total_tonnes']) for r in comm_rows))
+    commodity_history = []
+    for r in comm_rows:
+        mt = float(r['total_tonnes'])
+        commodity_history.append({
+            'product_name': r['product_name'],
+            'deal_count': r['deal_count'],
+            'total_tonnes': mt,
+            'percentage': round((mt / total_party_mt) * 100, 1)
+        })
+
+    conn.close()
+
+    return {
+        'party': party,
+        'kpis': {
+            'total_deals': total_deals,
+            'confirmed_volume_mt': confirmed_volume_mt,
+            'pending_deals': pending_deals,
+            'commodities_traded_count': len(commodity_history),
+            'balance_due': balance_due
+        },
+        'contacts': party['contacts'],
+        'deals': deals,
+        'commodity_history': commodity_history
+    }
+
+def soft_delete_deal(deal_id: str, actor_name: str, actor_role: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """Moves a deal to the Trash bin."""
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM deals WHERE id = ? OR bgn_code = ?", (deal_id, deal_id))
+    deal = cur.fetchone()
+    if not deal:
+        conn.close()
+        raise ValueError(f"Deal {deal_id} not found.")
+
+    real_deal_id = deal['id']
+    now_iso = datetime.now().isoformat()
+    cur.execute("UPDATE deals SET is_deleted = 1, deleted_at = ?, updated_at = ? WHERE id = ?", (now_iso, now_iso, real_deal_id))
+
+    log_audit(conn, "deals", real_deal_id, "TRASH", actor_name, actor_role, {
+        "is_deleted": 0
+    }, {
+        "is_deleted": 1,
+        "deleted_at": now_iso
+    }, "Soft deleted to trash bin")
+
+    conn.commit()
+    conn.close()
+    return {'deal_id': real_deal_id, 'is_deleted': 1, 'deleted_at': now_iso}
+
+def restore_deal(deal_id: str, actor_name: str, actor_role: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """Restores a soft-deleted deal from the Trash bin."""
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM deals WHERE id = ? OR bgn_code = ?", (deal_id, deal_id))
+    deal = cur.fetchone()
+    if not deal:
+        conn.close()
+        raise ValueError(f"Deal {deal_id} not found.")
+
+    real_deal_id = deal['id']
+    now_iso = datetime.now().isoformat()
+    cur.execute("UPDATE deals SET is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?", (now_iso, real_deal_id))
+
+    log_audit(conn, "deals", real_deal_id, "RESTORE", actor_name, actor_role, {
+        "is_deleted": 1
+    }, {
+        "is_deleted": 0
+    }, "Restored deal from trash bin")
+
+    conn.commit()
+    conn.close()
+    return {'deal_id': real_deal_id, 'is_deleted': 0}
+
+def purge_deal_permanent(deal_id: str, actor_name: str, actor_role: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """Permanently purges a deal and its ledger entries."""
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM deals WHERE id = ? OR bgn_code = ?", (deal_id, deal_id))
+    deal = cur.fetchone()
+    if not deal:
+        conn.close()
+        raise ValueError(f"Deal {deal_id} not found.")
+
+    real_deal_id = deal['id']
+    cur.execute("DELETE FROM brokerage_ledger WHERE deal_id = ?", (real_deal_id,))
+    cur.execute("DELETE FROM dispatch_logs WHERE deal_id = ?", (real_deal_id,))
+    cur.execute("DELETE FROM deals WHERE id = ?", (real_deal_id,))
+
+    log_audit(conn, "deals", real_deal_id, "PERMANENT_DELETE", actor_name, actor_role, None, None, "Permanently purged from database")
+
+    conn.commit()
+    conn.close()
+    return {'deal_id': real_deal_id, 'purged': True}
+
+def get_market_rates(db_path: str = DB_PATH) -> List[Dict[str, Any]]:
+    """Returns real-time commodity benchmark rates."""
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM market_rates ORDER BY benchmark_rate_qtl DESC")
+    rates = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return rates
+
+def get_dispatch_logs(db_path: str = DB_PATH) -> List[Dict[str, Any]]:
+    """Returns recent communication dispatch logs."""
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT l.*, COALESCE(d.bgn_code, d.id) AS bgn_code, d.deal_date, p.name AS product_name
+        FROM dispatch_logs l
+        JOIN deals d ON l.deal_id = d.id
+        JOIN products p ON d.product_id = p.id
+        ORDER BY l.created_at DESC
+        LIMIT 50
+    """)
+    logs = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return logs
+
+def create_dispatch_log(data: Dict[str, Any], actor_name: str = "Sanjay Kumar Aggarwal", db_path: str = DB_PATH) -> Dict[str, Any]:
+    """Records a WhatsApp or Email dispatch event."""
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+
+    log_id = f"DSP-{datetime.now().strftime('%Y%m%d%H%M%S%f')[:17]}"
+    deal_id = data.get('deal_id')
+    # Resolve deal_id if bgn_code was provided
+    if deal_id:
+        cur.execute("SELECT id FROM deals WHERE id = ? OR bgn_code = ?", (deal_id, deal_id))
+        d_row = cur.fetchone()
+        if d_row:
+            deal_id = d_row['id']
+    recipient_type = data.get('recipient_type', 'BUYER')
+    recipient_name = data.get('recipient_name', 'Counterparty')
+    channel = data.get('channel', 'WHATSAPP')
+    phone_or_email = data.get('phone_or_email', '')
+    message_preview = data.get('message_preview', '')
+    status = data.get('status', 'SENT')
+    now_iso = datetime.now().isoformat()
+
+    cur.execute("""
+        INSERT INTO dispatch_logs (id, deal_id, recipient_type, recipient_name, channel, phone_or_email, message_preview, status, sent_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (log_id, deal_id, recipient_type, recipient_name, channel, phone_or_email, message_preview, status, actor_name, now_iso))
+
+    conn.commit()
+    conn.close()
+    return {
+        'id': log_id,
+        'deal_id': deal_id,
+        'recipient_name': recipient_name,
+        'channel': channel,
+        'status': status,
+        'created_at': now_iso
     }

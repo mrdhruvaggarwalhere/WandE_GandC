@@ -37,8 +37,10 @@ def init_db(db_path: str = DB_PATH):
     CREATE TABLE IF NOT EXISTS parties (
         id TEXT PRIMARY KEY,
         legal_name TEXT UNIQUE NOT NULL,
+        trade_name TEXT,
         normalized_name TEXT NOT NULL,
         party_type TEXT NOT NULL CHECK(party_type IN ('BUYER', 'SELLER', 'BOTH')),
+        mandi_station TEXT,
         address TEXT,
         city TEXT,
         state TEXT,
@@ -46,6 +48,12 @@ def init_db(db_path: str = DB_PATH):
         phone TEXT,
         email TEXT,
         gstin TEXT,
+        pan TEXT,
+        bank_name TEXT,
+        bank_account_no TEXT,
+        bank_ifsc TEXT,
+        bank_branch TEXT,
+        contacts_json TEXT, -- JSON array of [{name, role, phone, email}]
         default_buyer_brokerage_per_tonne REAL DEFAULT 0.0,
         default_seller_brokerage_per_tonne REAL DEFAULT 0.0,
         brokerage_enabled INTEGER DEFAULT 1,
@@ -91,9 +99,10 @@ def init_db(db_path: str = DB_PATH):
         FOREIGN KEY (final_bill_buyer_id) REFERENCES parties(id)
     );
 
-    -- Deals (Individual Purchase & Resale Transactions)
+    -- Deals (Individual Purchase & Resale Transactions / Bargains)
     CREATE TABLE IF NOT EXISTS deals (
         id TEXT PRIMARY KEY,
+        bgn_code TEXT, -- Display Bargain ID e.g. BGN-006
         chain_id TEXT NOT NULL,
         link_sequence INTEGER DEFAULT 1,
         parent_deal_id TEXT,
@@ -109,6 +118,10 @@ def init_db(db_path: str = DB_PATH):
         gst_percentage REAL DEFAULT 5.0,
         is_rate_inclusive_gst INTEGER DEFAULT 0,
         delivery_date TEXT NOT NULL,
+        advance_payment_date TEXT,
+        delivery_condition TEXT,
+        is_buyer_confirmed INTEGER DEFAULT 1,
+        is_seller_confirmed INTEGER DEFAULT 1,
         buyer_brokerage_rate_per_tonne REAL DEFAULT 0.0,
         seller_brokerage_rate_per_tonne REAL DEFAULT 0.0,
         buyer_brokerage_amount REAL DEFAULT 0.0,
@@ -117,10 +130,12 @@ def init_db(db_path: str = DB_PATH):
         price_diff_per_qtl REAL DEFAULT 0.0,
         price_diff_profit REAL DEFAULT 0.0,
         delivery_status TEXT DEFAULT 'PENDING' CHECK(delivery_status IN ('PENDING', 'DELIVERED', 'OVERDUE')),
-        status TEXT DEFAULT 'CONFIRMED' CHECK(status IN ('DRAFT', 'CONFIRMED', 'COMPLETED', 'CANCELLED')),
+        status TEXT DEFAULT 'CONFIRMED' CHECK(status IN ('DRAFT', 'PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED')),
         is_brokerage_overridden INTEGER DEFAULT 0,
         brokerage_override_reason TEXT,
         notes TEXT,
+        is_deleted INTEGER DEFAULT 0,
+        deleted_at TEXT,
         created_by TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -129,6 +144,34 @@ def init_db(db_path: str = DB_PATH):
         FOREIGN KEY (seller_id) REFERENCES parties(id),
         FOREIGN KEY (buyer_id) REFERENCES parties(id),
         FOREIGN KEY (product_id) REFERENCES products(id)
+    );
+
+    -- Market Commodity Benchmark Rates
+    CREATE TABLE IF NOT EXISTS market_rates (
+        id TEXT PRIMARY KEY,
+        commodity_name TEXT NOT NULL,
+        mandi_station TEXT NOT NULL,
+        benchmark_rate_qtl REAL NOT NULL,
+        change_today REAL DEFAULT 0.0,
+        high_rate REAL,
+        low_rate REAL,
+        unit TEXT DEFAULT 'QUINTAL',
+        updated_at TEXT NOT NULL
+    );
+
+    -- Communication & Dispatch Logs (WhatsApp / Email)
+    CREATE TABLE IF NOT EXISTS dispatch_logs (
+        id TEXT PRIMARY KEY,
+        deal_id TEXT NOT NULL,
+        recipient_type TEXT NOT NULL CHECK(recipient_type IN ('BUYER', 'SELLER', 'BOTH')),
+        recipient_name TEXT NOT NULL,
+        channel TEXT NOT NULL CHECK(channel IN ('WHATSAPP', 'EMAIL')),
+        phone_or_email TEXT,
+        message_preview TEXT,
+        status TEXT DEFAULT 'SENT' CHECK(status IN ('SENT', 'FAILED', 'PENDING')),
+        sent_by TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (deal_id) REFERENCES deals(id)
     );
 
     -- Official Direct Billing Instructions
@@ -231,6 +274,13 @@ def init_db(db_path: str = DB_PATH):
     CREATE INDEX IF NOT EXISTS idx_ledger_party ON brokerage_ledger(party_id);
     CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_logs(entity_name, entity_id);
     """)
+
+    # Migration checks for existing parties table
+    for col in ['trade_name', 'mandi_station', 'pan', 'bank_name', 'bank_account_no', 'bank_ifsc', 'bank_branch']:
+        try:
+            cur.execute(f"ALTER TABLE parties ADD COLUMN {col} TEXT")
+        except Exception:
+            pass
 
     conn.commit()
     conn.close()

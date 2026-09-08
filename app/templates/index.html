@@ -3,768 +3,1232 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>G&C Central Deal & Brokerage Automation Platform</title>
-  <meta name="description" content="Central deal tracking, resale chaining, price-difference profit, per-tonne brokerage, and direct billing automation for edible-oil brokers.">
+  <title>Ganesh & Company — Agricultural Commodity Brokerage & Canvassing</title>
+  <meta name="description" content="Executive commodity brokerage and canvassing platform for edible oil & oil cake in Sri Ganganagar, Rajasthan.">
   <link rel="stylesheet" href="/static/css/style.css">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Client-side PDF Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-  <div class="app-layout">
-    <!-- Sidebar Navigation -->
-    <aside class="app-sidebar">
+  <div class="app-shell">
+    <!-- Collapsible Left Navigation Sidebar -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <!-- Brand Header -->
       <div class="sidebar-header">
-        <div class="brand-icon">G&C</div>
-        <div class="brand-text">
-          <h1>G&C Brokerage</h1>
-          <p>Automation Platform</p>
+        <div class="brand-wrapper" id="brand-home-link" title="Ganesh & Company">
+          <!-- Lord Ganesha Sacred Emblem SVG -->
+          <svg class="ganesha-emblem-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="46" fill="#111827" stroke="#F59E0B" stroke-width="3"/>
+            <!-- Sacred Om & Ganesha Motif -->
+            <path d="M50 16C53 16 56 18 56 22C56 26 52 28 50 28C48 28 44 26 44 22C44 18 47 16 50 16Z" fill="#F59E0B"/>
+            <path d="M50 28C60 28 68 34 68 45C68 56 60 62 52 64C48 65 48 70 52 74C56 78 62 76 66 74" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+            <path d="M42 36C35 39 32 46 32 54C32 64 40 70 48 70C54 70 58 66 58 60C58 52 48 48 44 42" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+            <path d="M46 32H54" stroke="#10B981" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="50" cy="22" r="2" fill="#EF4444"/>
+            <path d="M38 24C34 26 31 30 31 35C31 40 34 44 38 46" stroke="#F59E0B" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <div class="brand-text-block">
+            <span class="brand-title">GANESH & COMPANY</span>
+            <span class="brand-subtitle">SRIGANGANAGAR</span>
+          </div>
         </div>
+        <button class="sidebar-toggle-btn" id="btn-toggle-sidebar" title="Toggle Sidebar (⌘B / [ )">
+          <i data-lucide="chevron-left" id="sidebar-toggle-icon"></i>
+        </button>
       </div>
 
-      <div class="nav-section-title">Core Operations</div>
-      <ul class="nav-links">
-        <li>
-          <a class="nav-item active" data-view="dashboard" id="nav-dashboard">
-            <i data-lucide="layout-dashboard"></i>
-            <span>Dashboard</span>
-          </a>
-        </li>
-        <li>
-          <a class="nav-item" data-view="deals" id="nav-deals">
-            <i data-lucide="file-spreadsheet"></i>
-            <span>Deals Register</span>
-            <span class="nav-badge" id="badge-deals-count">0</span>
-          </a>
-        </li>
-        <li>
-          <a class="nav-item" data-view="chains" id="nav-chains">
-            <i data-lucide="git-merge"></i>
-            <span>Deal Chains (Lots)</span>
-            <span class="nav-badge" id="badge-chains-count">0</span>
-          </a>
-        </li>
-        <li>
-          <a class="nav-item" data-view="billing" id="nav-billing">
-            <i data-lucide="receipt"></i>
-            <span>Direct Billing</span>
-            <span class="nav-badge" id="badge-billing-ready">0</span>
-          </a>
-        </li>
-      </ul>
-
-      <div class="nav-section-title">Financial & Reports</div>
-      <ul class="nav-links">
-        <li>
-          <a class="nav-item" data-view="ledger" id="nav-ledger">
-            <i data-lucide="book-open"></i>
-            <span>Party Ledgers</span>
-          </a>
-        </li>
-        <li>
-          <a class="nav-item" data-view="reports" id="nav-reports">
-            <i data-lucide="bar-chart-3"></i>
-            <span>Analytics & Reports</span>
-          </a>
-        </li>
-        <li>
-          <a class="nav-item" data-view="busy" id="nav-busy">
-            <i data-lucide="layers"></i>
-            <span>BUSY Integration</span>
-          </a>
-        </li>
-      </ul>
-
-      <div class="nav-section-title">Administration</div>
-      <ul class="nav-links">
-        <li>
-          <a class="nav-item" data-view="masters" id="nav-masters">
-            <i data-lucide="settings"></i>
-            <span>Masters & Settings</span>
-          </a>
-        </li>
-        <li>
-          <a class="nav-item" data-view="tests" id="nav-tests">
-            <i data-lucide="check-circle-2"></i>
-            <span>Acceptance Test</span>
-          </a>
-        </li>
-      </ul>
-
-      <!-- Role Switcher in Sidebar Footer -->
-      <div class="sidebar-footer">
-        <div class="role-switcher-card">
-          <div class="role-label">
-            <span>ACTIVE ROLE</span>
-            <span id="role-badge" class="badge badge-profit">ADMIN</span>
+      <!-- Navigation Links -->
+      <div class="sidebar-nav-container">
+        <div class="nav-category">Trading Operations</div>
+        
+        <a class="nav-link active" data-view="dashboard" id="nav-dashboard">
+          <div class="nav-link-left">
+            <i data-lucide="layout-dashboard" class="nav-icon"></i>
+            <span class="nav-label">Executive Dashboard</span>
           </div>
-          <select id="role-select" class="role-select">
-            <option value="ADMIN" selected>Administrator (Full Access)</option>
-            <option value="BROKER">Broker / Operator</option>
-            <option value="ACCOUNTS">Accounts (Review & Billing)</option>
-            <option value="VIEWER">Viewer (Read Only)</option>
-          </select>
+        </a>
+
+        <a class="nav-link" data-view="bargains" id="nav-bargains">
+          <div class="nav-link-left">
+            <i data-lucide="receipt" class="nav-icon"></i>
+            <span class="nav-label">Bargains Hub</span>
+          </div>
+          <span class="nav-counter" id="badge-bargains-count">0</span>
+        </a>
+
+        <a class="nav-link" data-view="parties" id="nav-parties">
+          <div class="nav-link-left">
+            <i data-lucide="building-2" class="nav-icon"></i>
+            <span class="nav-label">Party Directory</span>
+          </div>
+          <span class="nav-counter" id="badge-parties-count">0</span>
+        </a>
+
+        <a class="nav-link" data-view="dispatches" id="nav-dispatches">
+          <div class="nav-link-left">
+            <i data-lucide="message-square-share" class="nav-icon"></i>
+            <span class="nav-label">WhatsApp & Email Logs</span>
+          </div>
+          <span class="nav-counter" id="badge-dispatches-count">0</span>
+        </a>
+
+        <div class="nav-category">Market & Analytics</div>
+
+        <a class="nav-link" data-view="market-rates" id="nav-market-rates">
+          <div class="nav-link-left">
+            <i data-lucide="trending-up" class="nav-icon"></i>
+            <span class="nav-label">Market Rates & Mandis</span>
+          </div>
+        </a>
+
+        <a class="nav-link" data-view="reports" id="nav-reports">
+          <div class="nav-link-left">
+            <i data-lucide="bar-chart-3" class="nav-icon"></i>
+            <span class="nav-label">Reports & Brokerage</span>
+          </div>
+        </a>
+
+        <a class="nav-link" data-view="trash" id="nav-trash">
+          <div class="nav-link-left">
+            <i data-lucide="trash-2" class="nav-icon"></i>
+            <span class="nav-label">Trash / Recycle Bin</span>
+          </div>
+          <span class="nav-counter" id="badge-trash-count">0</span>
+        </a>
+      </div>
+
+      <!-- User Profile & Shortcuts Footer -->
+      <div class="sidebar-footer">
+        <div class="user-profile-pill" id="user-profile-pill">
+          <div class="user-avatar-wrapper">
+            <div class="user-avatar">SA</div>
+            <div class="user-meta">
+              <span class="user-name">Sanjay Kumar Aggarwal</span>
+              <span class="user-role">Proprietor • Sri Ganganagar</span>
+            </div>
+          </div>
+        </div>
+        <div class="shortcut-hint-pill">
+          <span>Global Search</span>
+          <kbd>⌘K</kbd>
         </div>
       </div>
     </aside>
 
-    <!-- Main Content Panel -->
+    <!-- Main Content Shell -->
     <main class="app-main">
-      <!-- Header Bar -->
-      <header class="app-header">
-        <div class="header-title-area">
-          <h2 id="page-title">Dashboard Overview</h2>
-          <span id="page-subtitle">Central deal tracking and brokerage metrics</span>
+      <!-- Global Top Action Bar -->
+      <header class="app-topbar">
+        <div class="topbar-left">
+          <div class="breadcrumbs">
+            <span>Ganesh & Co.</span>
+            <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+            <span class="breadcrumb-active" id="breadcrumb-current">Executive Dashboard</span>
+          </div>
         </div>
-        <div class="header-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-export-excel" title="Download Complete Excel Workbook">
-            <i data-lucide="download"></i>
-            <span>Export Excel (.xlsx)</span>
+
+        <!-- Live Mandi Ticker Marquee -->
+        <div class="mandi-ticker-container">
+          <div class="ticker-pulse-badge">
+            <span class="pulse-dot"></span>
+            <span>MANDI LIVE</span>
+          </div>
+          <div class="ticker-track" id="mandi-ticker-track">
+            <!-- Populated dynamically via JS -->
+            <div class="ticker-item">
+              <span>[BGN-006] Mustard Oil 32 MT</span>
+              <span>•</span>
+              <strong>HARBANS ➔ TERAI</strong>
+              <span>•</span>
+              <span class="rate">₹15,250/Qtl</span>
+            </div>
+            <div class="ticker-item">
+              <span>[BGN-004] Mustard Cake 40 MT</span>
+              <span>•</span>
+              <strong>RAJASTHAN ➔ KUBER</strong>
+              <span>•</span>
+              <span class="rate">₹2,850/Qtl</span>
+            </div>
+            <div class="ticker-item">
+              <span>[BGN-003] Refined Soya 25 MT</span>
+              <span>•</span>
+              <strong>HARBANS ➔ SHREE GANESH</strong>
+              <span>•</span>
+              <span class="rate">₹12,400/Qtl</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Command Palette Button -->
+          <button class="command-palette-btn" id="btn-open-command-palette" title="Quick Search (⌘K)">
+            <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+            <span>Search deals, parties...</span>
+            <kbd>⌘K</kbd>
           </button>
-          <button class="btn btn-primary btn-sm" id="btn-open-new-deal">
-            <i data-lucide="plus-circle"></i>
-            <span>+ New Deal</span>
+
+          <!-- New Bargain Button -->
+          <button class="btn btn-primary" id="btn-open-new-bargain" title="New Bargain Contract (Ctrl+B)">
+            <i data-lucide="plus" style="width: 15px; height: 15px;"></i>
+            <span>+ New Bargain</span>
+            <kbd style="background: rgba(0,0,0,0.25); color: #FFF; border: none;">Ctrl+B</kbd>
           </button>
         </div>
       </header>
 
-      <!-- Scrollable Views Container -->
-      <div class="page-view" id="main-view-container">
-        <!-- 1. DASHBOARD VIEW -->
-        <section id="view-dashboard">
-          <!-- Top Financial KPI Cards -->
+      <!-- Views Scrollable Container -->
+      <div class="app-view-scroll" id="app-view-scroll">
+        
+        <!-- =================================================================
+             SCREEN 1: EXECUTIVE DASHBOARD
+             ================================================================= -->
+        <section class="view-pane active" id="view-dashboard">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h2>Executive Dashboard</h2>
+              <p>Real-time Sri Ganganagar Mandi trading analytics, traded volumes & confirmations.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-dashboard">
+                <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i>
+                <span>Refresh Feed</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4 KPI Metric Cards -->
           <div class="kpi-grid">
+            <!-- KPI 1: Today's Deals -->
             <div class="kpi-card">
-              <div class="kpi-top">
-                <span>Active Deals</span>
-                <div class="kpi-icon"><i data-lucide="file-text"></i></div>
+              <div class="kpi-card-header">
+                <span class="kpi-title">Today's Deals</span>
+                <div class="kpi-icon-pill"><i data-lucide="calendar-check" style="width: 16px; height: 16px;"></i></div>
               </div>
-              <div class="kpi-value" id="kpi-active-deals">0</div>
-              <div class="kpi-sub">Across all commodities</div>
-            </div>
-
-            <div class="kpi-card emerald">
-              <div class="kpi-top">
-                <span>Price-Diff Profit</span>
-                <div class="kpi-icon"><i data-lucide="trending-up"></i></div>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="kpi-today-deals">6</span>
+                <span class="kpi-badge kpi-badge-positive" id="kpi-deals-trend">+14% vs yesterday</span>
               </div>
-              <div class="kpi-value text-profit" id="kpi-profit">₹0.00</div>
-              <div class="kpi-sub">Chain resale difference earnings</div>
+              <span class="kpi-subtext">Active Mandi contracts confirmed</span>
             </div>
 
-            <div class="kpi-card indigo">
-              <div class="kpi-top">
-                <span>Total Brokerage</span>
-                <div class="kpi-icon"><i data-lucide="coins"></i></div>
-              </div>
-              <div class="kpi-value" id="kpi-brokerage">₹0.00</div>
-              <div class="kpi-sub">Buyer & Seller per-tonne fee</div>
-            </div>
-
-            <div class="kpi-card emerald">
-              <div class="kpi-top">
-                <span>Net Total Earning</span>
-                <div class="kpi-icon"><i data-lucide="wallet"></i></div>
-              </div>
-              <div class="kpi-value text-profit" id="kpi-net-earning">₹0.00</div>
-              <div class="kpi-sub">Profit + Total Brokerage</div>
-            </div>
-          </div>
-
-          <!-- Direct Billing Highlighting Banner -->
-          <div class="direct-billing-banner mt-24" id="dashboard-billing-banner" style="display: none;">
-            <div class="banner-icon">
-              <i data-lucide="receipt"></i>
-            </div>
-            <div class="banner-content">
-              <h3>Latest Official Direct-Billing Instruction</h3>
-              <p class="banner-text" id="dashboard-banner-text">Loading instruction...</p>
-            </div>
-            <button class="btn btn-primary btn-sm" id="btn-banner-view-chain" style="margin-left: auto;">
-              <span>View Chain</span>
-              <i data-lucide="arrow-right"></i>
-            </button>
-          </div>
-
-          <!-- Deliveries & Alert Cards -->
-          <div class="kpi-grid mt-24">
-            <div class="kpi-card amber">
-              <div class="kpi-top">
-                <span>Deliveries Due Today</span>
-                <div class="kpi-icon"><i data-lucide="calendar"></i></div>
-              </div>
-              <div class="kpi-value" id="kpi-del-today">0</div>
-              <div class="kpi-sub">Agreed delivery date today</div>
-            </div>
-
+            <!-- KPI 2: Active Traded Volume -->
             <div class="kpi-card">
-              <div class="kpi-top">
-                <span>Deliveries This Week</span>
-                <div class="kpi-icon"><i data-lucide="clock"></i></div>
+              <div class="kpi-card-header">
+                <span class="kpi-title">Traded Volume</span>
+                <div class="kpi-icon-pill"><i data-lucide="scale" style="width: 16px; height: 16px;"></i></div>
               </div>
-              <div class="kpi-value" id="kpi-del-week">0</div>
-              <div class="kpi-sub">Next 7 calendar days</div>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="kpi-traded-volume">179 MT</span>
+              </div>
+              <div class="progress-bar-bg" style="margin-top: 4px;">
+                <div class="progress-bar-fill fill-emerald" style="width: 78%;"></div>
+              </div>
+              <span class="kpi-subtext">1,790 Quintals booked this session</span>
             </div>
 
-            <div class="kpi-card rose">
-              <div class="kpi-top">
-                <span>Overdue Deliveries</span>
-                <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
+            <!-- KPI 3: Active Parties -->
+            <div class="kpi-card">
+              <div class="kpi-card-header">
+                <span class="kpi-title">Active Parties</span>
+                <div class="kpi-icon-pill"><i data-lucide="users" style="width: 16px; height: 16px;"></i></div>
               </div>
-              <div class="kpi-value" style="color: #FB7185;" id="kpi-del-overdue">0</div>
-              <div class="kpi-sub">Passed without confirmation</div>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="kpi-active-parties">9</span>
+              </div>
+              <span class="kpi-subtext">Registered crushing mills & buyers</span>
             </div>
 
-            <div class="kpi-card emerald">
-              <div class="kpi-top">
-                <span>Ready for Direct Bill</span>
-                <div class="kpi-icon"><i data-lucide="check-circle-2"></i></div>
+            <!-- KPI 4: Pending Confirmations -->
+            <div class="kpi-card">
+              <div class="kpi-card-header">
+                <span class="kpi-title">Pending Confirmations</span>
+                <div class="kpi-icon-pill"><i data-lucide="clock" style="width: 16px; height: 16px;"></i></div>
               </div>
-              <div class="kpi-value" id="kpi-chains-billing">0</div>
-              <div class="kpi-sub">Awaiting invoice approval</div>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="kpi-pending-confirmations" style="color: var(--gold);">1</span>
+                <span class="kpi-badge kpi-badge-warning">Attention Req.</span>
+              </div>
+              <span class="kpi-subtext">Awaiting buyer / seller signature</span>
             </div>
           </div>
 
-          <!-- Two Column Table Section: Recent Deals & Brokerage Receivables -->
-          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;" class="mt-24">
-            <!-- Recent Deals Table -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <i data-lucide="activity"></i>
-                  <span>Recent Deal Transactions</span>
-                </div>
-                <button class="btn btn-secondary btn-sm" onclick="app.navigate('deals')">View All Deals</button>
+          <!-- Today's Bargains (Primary Dashboard Feed) -->
+          <div class="card-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <i data-lucide="zap" style="width: 16px; height: 16px; color: var(--gold);"></i>
+                <span>Today's Bargains</span>
+                <span class="ticker-pulse-badge" style="margin-left: 8px;">
+                  <span class="pulse-dot"></span>
+                  <span>TODAY'S SESSION</span>
+                </span>
               </div>
-              <div class="table-responsive">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>Deal Date</th>
-                      <th>Buyer</th>
-                      <th>Seller</th>
-                      <th>Product</th>
-                      <th>Qty (MT)</th>
-                      <th>Rate (₹)</th>
-                      <th>Profit (₹)</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody id="dashboard-deals-tbody">
-                    <!-- Populated via JS -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Party Receivables -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <i data-lucide="users"></i>
-                  <span>Brokerage Receivables</span>
-                </div>
-                <button class="btn btn-secondary btn-sm" onclick="app.navigate('ledger')">Open Ledger</button>
-              </div>
-              <div class="table-responsive">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>Party Name</th>
-                      <th>Due Balance</th>
-                    </tr>
-                  </thead>
-                  <tbody id="dashboard-receivables-tbody">
-                    <!-- Populated via JS -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 2. DEALS REGISTER VIEW (A:G Excel Style Mapping) -->
-        <section id="view-deals" style="display: none;">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <i data-lucide="file-spreadsheet"></i>
-                <span>Primary Deal Register (Excel Columns A:G Compliant)</span>
-              </div>
-              <div class="flex-between gap-12">
-                <input type="text" id="filter-deals-search" class="form-control form-control-sm" placeholder="Search party, product, lot..." style="width: 240px;">
-                <button class="btn btn-primary btn-sm" id="btn-deals-new-deal">+ Add Deal</button>
-              </div>
-            </div>
-            <div class="table-responsive">
-              <table class="table" id="deals-table">
-                <thead>
-                  <tr>
-                    <th class="highlight-ag">Deal Date (A)</th>
-                    <th class="highlight-ag">Buyer (B)</th>
-                    <th class="highlight-ag">Seller (C)</th>
-                    <th class="highlight-ag">Product (D)</th>
-                    <th class="highlight-ag">Quantity (E)</th>
-                    <th class="highlight-ag">Price & GST (F)</th>
-                    <th class="highlight-ag">Delivery Date (G)</th>
-                    <th>Lot ID</th>
-                    <th>Link #</th>
-                    <th>Profit (₹)</th>
-                    <th>Brokerage (₹)</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="deals-table-tbody">
-                  <!-- Populated dynamically -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- 3. DEAL CHAINS (LOTS) & RESALE WORKFLOW VIEW -->
-        <section id="view-chains" style="display: none;">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <i data-lucide="git-merge"></i>
-                <span>Deal Chains (Lots) & Resale Progression</span>
-              </div>
-              <span class="text-muted" style="font-size: 12px;">Track multi-leg intermediate resales, party instructions, and final direct billing</span>
-            </div>
-            <div id="chains-container" class="timeline-tree">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-        </section>
-
-        <!-- 4. OFFICIAL DIRECT BILLING INSTRUCTIONS VIEW -->
-        <section id="view-billing" style="display: none;">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <i data-lucide="receipt"></i>
-                <span>Official Direct-Billing Instructions</span>
-              </div>
-              <span class="badge badge-profit">Direct Commercial Invoices</span>
-            </div>
-            <div class="table-responsive">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Instruction ID</th>
-                    <th>Lot ID</th>
-                    <th>Original Bill Seller</th>
-                    <th>Final Bill Buyer</th>
-                    <th>Product & Qty</th>
-                    <th>Final Rate (₹)</th>
-                    <th>Total Value (₹)</th>
-                    <th>Approval Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="billing-table-tbody">
-                  <!-- Populated via JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- 5. PARTY LEDGER & BROKERAGE STATEMENTS -->
-        <section id="view-ledger" style="display: none;">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <i data-lucide="book-open"></i>
-                <span>Party Ledger & Brokerage Settlements</span>
-              </div>
-              <div class="flex-between gap-12">
-                <select id="ledger-party-select" class="form-control" style="width: 280px;">
-                  <option value="">-- All Parties --</option>
-                </select>
-                <button class="btn btn-success btn-sm" id="btn-open-payment-modal">
-                  <i data-lucide="plus-circle"></i>
-                  <span>Record Payment</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button class="btn btn-secondary btn-xs" id="btn-goto-bargains" title="View complete bargains repository">
+                  <span>View All in Bargains Hub &rarr;</span>
+                </button>
+                <button class="btn btn-primary btn-xs" id="btn-dash-new-bargain" title="Log new bargain contract (Ctrl+B)">
+                  <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+                  <span>+ New Bargain</span>
                 </button>
               </div>
             </div>
-            <div class="table-responsive">
-              <table class="table">
+            <div class="data-table-container">
+              <table class="data-table" id="table-todays-bargains">
                 <thead>
                   <tr>
-                    <th>Entry Date</th>
-                    <th>Party Name</th>
-                    <th>Type</th>
-                    <th>Reference / Deal</th>
-                    <th>Amount (₹)</th>
-                    <th>Notes</th>
-                    <th>Recorded By</th>
+                    <th>Bargain ID</th>
+                    <th>Date</th>
+                    <th>Seller (Mill)</th>
+                    <th>Buyer (Wholesaler)</th>
+                    <th>Commodity</th>
+                    <th>Qty (MT)</th>
+                    <th>Rate (₹/Qtl)</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
                   </tr>
                 </thead>
-                <tbody id="ledger-table-tbody">
-                  <!-- Populated via JS -->
+                <tbody id="tbody-todays-bargains">
+                  <!-- Injected via JS -->
                 </tbody>
               </table>
             </div>
           </div>
         </section>
 
-        <!-- 6. ANALYTICS & REPORTS SUITE -->
-        <section id="view-reports" style="display: none;">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <i data-lucide="bar-chart-3"></i>
-                <span>Reports Suite (10+ Reports)</span>
-              </div>
-              <div class="flex-between gap-12">
-                <select id="report-type-select" class="form-control" style="width: 260px;">
-                  <option value="deal-register">1. Deal Register</option>
-                  <option value="profit-report">2. Price-Difference Profit Report</option>
-                  <option value="brokerage-outstanding">3. Party-Wise Brokerage Outstanding</option>
-                </select>
-                <button class="btn btn-secondary btn-sm" onclick="reports.loadReport()">Refresh Report</button>
-              </div>
+        <!-- =================================================================
+             SCREEN 2: BARGAINS HUB (High-Density Data Table)
+             ================================================================= -->
+        <section class="view-pane" id="view-bargains">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h2>Bargains Hub</h2>
+              <p>Centralized deal registry with instant multi-filter search, CSV export & print confirmations.</p>
             </div>
-            <div class="table-responsive mt-16">
-              <table class="table" id="report-dynamic-table">
-                <thead id="report-table-thead"></thead>
-                <tbody id="report-table-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- 7. MASTERS & SETTINGS -->
-        <section id="view-masters" style="display: none;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <!-- Parties Master -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <i data-lucide="users"></i>
-                  <span>Party Master</span>
-                </div>
-                <button class="btn btn-primary btn-sm" id="btn-add-party">+ Add Party</button>
-              </div>
-              <div class="table-responsive">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>Party Name</th>
-                      <th>Type</th>
-                      <th>Default Rates (₹/MT)</th>
-                      <th>BUSY Ledger Code</th>
-                    </tr>
-                  </thead>
-                  <tbody id="masters-parties-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Products Master -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <i data-lucide="package"></i>
-                  <span>Product Master</span>
-                </div>
-                <button class="btn btn-primary btn-sm" id="btn-add-product">+ Add Product</button>
-              </div>
-              <div class="table-responsive">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>Product Name</th>
-                      <th>Code</th>
-                      <th>GST %</th>
-                      <th>BUSY Item Code</th>
-                    </tr>
-                  </thead>
-                  <tbody id="masters-products-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 8. BUSY INTEGRATION HUB -->
-        <section id="view-busy" style="display: none;">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <i data-lucide="layers"></i>
-                <span>BUSY Accounting Integration Adapter</span>
-              </div>
-              <span class="badge badge-neutral">Voucher Series: Main (Sales)</span>
-            </div>
-            <p class="text-muted" style="font-size: 13px; margin-bottom: 18px;">
-              Strict Safeguard Enforced: Only approved official direct-billing instructions are staged for BUSY export. Internal intermediate deal-chain entries cannot accidentally be posted as commercial invoices.
-            </p>
-            <div class="table-responsive">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Voucher #</th>
-                    <th>Lot ID</th>
-                    <th>Seller (BUSY Code)</th>
-                    <th>Buyer (BUSY Code)</th>
-                    <th>Product</th>
-                    <th>Total Value (₹)</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="busy-table-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- 9. ACCEPTANCE TEST SUITE -->
-        <section id="view-tests" style="display: none;">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <i data-lucide="check-circle-2"></i>
-                <span>Mandatory Worked Example Acceptance Test Runner</span>
-              </div>
-              <button class="btn btn-success btn-sm" id="btn-run-acceptance-test">
-                <i data-lucide="play"></i>
-                <span>Run Acceptance Test</span>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" id="btn-export-csv" title="Export current filtered table to CSV">
+                <i data-lucide="download" style="width: 13px; height: 13px;"></i>
+                <span>📥 Export to CSV</span>
+              </button>
+              <button class="btn btn-primary btn-sm" id="btn-hub-new-bargain">
+                <i data-lucide="plus" style="width: 13px; height: 13px;"></i>
+                <span>+ New Bargain</span>
               </button>
             </div>
-            <div id="test-runner-container" class="mt-16">
-              <!-- Populated dynamically with assertion results -->
+          </div>
+
+          <!-- Filter & Search Toolbar -->
+          <div class="table-toolbar">
+            <div class="toolbar-left">
+              <div class="search-input-wrapper">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" class="search-input" id="filter-search-input" placeholder="Search Bargain ID, Party, Mandi Station, Commodity...">
+              </div>
+
+              <!-- Multi-status filter pills -->
+              <div class="status-filter-pills" id="status-filter-group">
+                <button class="filter-pill-btn active" data-status="ALL">All</button>
+                <button class="filter-pill-btn" data-status="CONFIRMED">Confirmed</button>
+                <button class="filter-pill-btn" data-status="PENDING">Pending</button>
+                <button class="filter-pill-btn" data-status="DRAFT">Draft</button>
+                <button class="filter-pill-btn" data-status="CANCELLED">Cancelled</button>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 12px; color: var(--text-dim);">Sort:</span>
+              <select class="form-select" id="sort-select" style="width: 140px; padding: 4px 8px; font-size: 12px;">
+                <option value="date-desc">Date (Newest)</option>
+                <option value="date-asc">Date (Oldest)</option>
+                <option value="rate-desc">Rate (High to Low)</option>
+                <option value="rate-asc">Rate (Low to High)</option>
+                <option value="qty-desc">Quantity (Highest)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 10-Column Data Table -->
+          <div class="data-table-container">
+            <table class="data-table" id="table-all-bargains">
+              <thead>
+                <tr>
+                  <th class="sortable" data-col="bgn_code">Bargain ID</th>
+                  <th class="sortable" data-col="deal_date">Date</th>
+                  <th>Seller (Firm & Station)</th>
+                  <th>Buyer (Firm & Station)</th>
+                  <th>Commodity</th>
+                  <th class="sortable" data-col="quantity_tonnes">Quantity</th>
+                  <th class="sortable" data-col="rate_per_qtl">Rate (₹)</th>
+                  <th>Status</th>
+                  <th title="Buyer Formal Confirmation">Buyer ✓</th>
+                  <th title="Seller Formal Confirmation">Seller ✓</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-all-bargains">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- =================================================================
+             SCREEN 4: PARTY DIRECTORY (Buyers & Sellers)
+             ================================================================= -->
+        <section class="view-pane" id="view-parties">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h2>Party Directory</h2>
+              <p>Crushing mills, buyers, wholesalers & contact hierarchy across Rajasthan, Haryana, WB mandis.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-primary btn-sm" id="btn-add-party">
+                <i data-lucide="user-plus" style="width: 13px; height: 13px;"></i>
+                <span>+ Add Party</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Segmented Filter Control -->
+          <div class="table-toolbar">
+            <div class="toolbar-left">
+              <div class="status-filter-pills" id="party-type-filter-group">
+                <button class="filter-pill-btn active" data-type="ALL">All Parties</button>
+                <button class="filter-pill-btn" data-type="SELLER">Sellers (Mills)</button>
+                <button class="filter-pill-btn" data-type="BUYER">Buyers (Wholesalers)</button>
+                <button class="filter-pill-btn" data-type="BOTH">Dual (Both)</button>
+              </div>
+
+              <div class="search-input-wrapper">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" class="search-input" id="party-search-input" placeholder="Search party legal name, station, GSTIN, contact person...">
+              </div>
+            </div>
+          </div>
+
+          <!-- Party Cards Grid -->
+          <div class="party-grid" id="party-cards-container">
+            <!-- Injected via JS -->
+          </div>
+        </section>
+
+        <!-- =================================================================
+             SCREEN 5: WHATSAPP & EMAIL LOGS
+             ================================================================= -->
+        <section class="view-pane" id="view-dispatches">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h2>WhatsApp & Email Logs</h2>
+              <p>Audit trail of all deal confirmations dispatched to buyers, sellers & transporters.</p>
+            </div>
+          </div>
+
+          <div class="data-table-container">
+            <table class="data-table" id="table-dispatch-logs">
+              <thead>
+                <tr>
+                  <th>Dispatch ID</th>
+                  <th>Bargain ID</th>
+                  <th>Recipient Firm</th>
+                  <th>Role</th>
+                  <th>Channel</th>
+                  <th>Phone / Email</th>
+                  <th>Message Preview</th>
+                  <th>Status</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-dispatch-logs">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- =================================================================
+             SCREEN 6: MARKET RATES & COMMODITIES
+             ================================================================= -->
+        <section class="view-pane" id="view-market-rates">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h2>Market Rates & Mandi Benchmarks</h2>
+              <p>Daily benchmark trading rates for Mustard Oil, Mustard Cake, Refined Soy & Palm across key stations.</p>
+            </div>
+          </div>
+
+          <div class="kpi-grid" id="market-rates-grid">
+            <!-- Injected via JS -->
+          </div>
+
+          <div class="card-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <i data-lucide="info" style="width: 16px; height: 16px; color: var(--gold);"></i>
+                <span>Regional Mandi Benchmarks & Freight Parity</span>
+              </div>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+              Sri Ganganagar (Rajasthan) is Northern India's premier mustard oil crushing and trading hub. 
+              Spot bargains executed by Ganesh & Company are linked to prevailing ex-mill quotes from Sangaria, Anoupgarh, and Sri Ganganagar mandi crushers, with deliveries routed across Rajasthan, Haryana (Hisar, Panchkula, Rewari) and North-East trunk terminals (Siliguri, West Bengal).
+            </p>
+          </div>
+        </section>
+
+        <!-- =================================================================
+             SCREEN 7: REPORTS & ANALYTICS
+             ================================================================= -->
+        <section class="view-pane" id="view-reports">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h2>Reports & Analytics</h2>
+              <p>Brokerage revenue audits, volume summaries & party receivables ledger.</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-export-excel-report">
+              <i data-lucide="file-spreadsheet" style="width: 14px; height: 14px;"></i>
+              <span>Export Full Excel Ledger</span>
+            </button>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <span class="kpi-title">Total Brokerage Accrued</span>
+              <span class="kpi-value" id="rep-total-brokerage">₹0</span>
+              <span class="kpi-subtext">50% Buyer / 50% Seller per MT standard</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-title">Price Difference Profit</span>
+              <span class="kpi-value" id="rep-diff-profit" style="color: var(--emerald);">₹0</span>
+              <span class="kpi-subtext">Resale lot chain arbitrage earnings</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-title">Net Brokerage Earnings</span>
+              <span class="kpi-value" id="rep-net-earnings" style="color: var(--gold);">₹0</span>
+              <span class="kpi-subtext">Total platform gross revenue</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-title">Outstanding Receivables</span>
+              <span class="kpi-value" id="rep-receivables">₹0</span>
+              <span class="kpi-subtext">Across active trading parties</span>
+            </div>
+          </div>
+
+          <div class="card-panel">
+            <div class="panel-header">
+              <div class="panel-title">Party-Wise Brokerage Receivables</div>
+            </div>
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Party Legal Name</th>
+                    <th>Station</th>
+                    <th>GSTIN</th>
+                    <th>Balance Due (₹)</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-party-receivables">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
+
+        <!-- =================================================================
+             SCREEN 8: TRASH / RECYCLE BIN
+             ================================================================= -->
+        <section class="view-pane" id="view-trash">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h2>Trash / Recycle Bin</h2>
+              <p>Restore soft-deleted bargains or permanently wipe contracts with full audit logging.</p>
+            </div>
+          </div>
+
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Bargain ID</th>
+                  <th>Date</th>
+                  <th>Seller</th>
+                  <th>Buyer</th>
+                  <th>Commodity</th>
+                  <th>Quantity</th>
+                  <th>Rate</th>
+                  <th>Deleted At</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-trash-deals">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
       </div>
     </main>
   </div>
 
-  <!-- MODALS -->
-
-  <!-- Modal 1: New Deal Entry -->
-  <div class="modal-backdrop" id="modal-new-deal">
-    <div class="modal-dialog">
+  <!-- =========================================================================
+       MODAL 1: AUTHENTIC A4 BARGAIN CONFIRMATION VIEW (Print-Ready)
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-letterhead">
+    <div class="modal-sheet modal-sheet-lg">
       <div class="modal-header">
-        <div class="modal-title">New Deal Entry (Single-Entry Capture)</div>
-        <button class="close-btn" onclick="app.closeModals()"><i data-lucide="x"></i></button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="file-text" style="width: 18px; height: 18px; color: var(--gold);"></i>
+          <h3>Official A4 Bargain Confirmation — Print View</h3>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-sm" id="btn-download-pdf" title="Download official PDF file to your device">
+            <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+            <span>Download PDF</span>
+          </button>
+          <button class="btn btn-primary btn-sm" id="btn-letterhead-dispatch" style="background: linear-gradient(135deg, #10B981, #059669); border-color: #10B981;" title="Send PDF to WhatsApp and Email">
+            <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+            <span>Send to WhatsApp &amp; Email</span>
+          </button>
+          <button class="btn btn-secondary btn-sm" id="btn-print-contract" title="Print document">
+            <i data-lucide="printer" style="width: 14px; height: 14px;"></i>
+            <span>Print</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" id="btn-close-letterhead">
+            <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
       </div>
-      <form id="form-new-deal">
-        <div class="modal-body">
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Deal Date (DD/MM/YYYY) *</label>
-              <input type="date" id="deal-date" class="form-control" required>
+
+      <div class="modal-body" style="background: #E2E8F0; padding: 24px;">
+        <!-- The Printable Document Container -->
+        <div class="contract-view-wrapper" id="printable-contract-area">
+          <!-- Top Center Jurisdiction -->
+          <div class="contract-jurisdiction">
+            ALL SUBJECT TO SRI GANGANAGAR JURISDICTION
+          </div>
+
+          <!-- Banner Header -->
+          <div class="contract-header-banner">
+            <!-- Left Sacred Ganesha Emblem -->
+            <div class="contract-emblem-area">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="46" fill="#FFFFFF" stroke="#000000" stroke-width="2.5"/>
+                <path d="M50 16C53 16 56 18 56 22C56 26 52 28 50 28C48 28 44 26 44 22C44 18 47 16 50 16Z" fill="#000000"/>
+                <path d="M50 28C60 28 68 34 68 45C68 56 60 62 52 64C48 65 48 70 52 74C56 78 62 76 66 74" stroke="#000000" stroke-width="3.5" stroke-linecap="round"/>
+                <path d="M42 36C35 39 32 46 32 54C32 64 40 70 48 70C54 70 58 66 58 60C58 52 48 48 44 42" stroke="#000000" stroke-width="3.5" stroke-linecap="round"/>
+                <path d="M46 32H54" stroke="#000000" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="50" cy="22" r="2" fill="#000000"/>
+                <path d="M38 24C34 26 31 30 31 35C31 40 34 44 38 46" stroke="#000000" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
             </div>
-            <div class="form-group">
-              <label class="form-label">Product *</label>
-              <select id="deal-product" class="form-control" required></select>
+
+            <!-- Center Firm Details -->
+            <div class="contract-firm-details">
+              <h1 class="contract-firm-title">GANESH & COMPANY</h1>
+              <div class="contract-sub-box">Convassing Agent All Kind of Edible Oil & Oil Cake</div>
+              <div class="contract-address">House No.2 Friends Colony, Opp.Bahal Petrol Pump, SRIGANGANAGAR-335001</div>
+              <div class="contract-contact-strip">
+                Mob. 94619-40113, 94619-40114, 94619-40115 Sanjay Kumar Aggarwal &bull; Email: ganeshsgnr@rediffmail.com
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Seller (Selling Party) *</label>
-              <select id="deal-seller" class="form-control" required></select>
+          </div>
+
+          <!-- Document Title -->
+          <div class="contract-doc-title">BARGAIN CONFIRMATION</div>
+
+          <!-- 2-Column Key-Value Grid -->
+          <table class="contract-grid-table">
+            <tbody>
+              <tr>
+                <td class="key-col">Bargain No.</td>
+                <td class="val-col mono" id="doc-bgn-code">BGN-006</td>
+              </tr>
+              <tr>
+                <td class="key-col">Date</td>
+                <td class="val-col mono" id="doc-date">04/07/2026</td>
+              </tr>
+              <tr>
+                <td class="key-col">Seller</td>
+                <td class="val-col" id="doc-seller">HARBANS INDUSTRIES, SANGARIA (RAJASTHAN)</td>
+              </tr>
+              <tr>
+                <td class="key-col">Buyer</td>
+                <td class="val-col" id="doc-buyer">TERAI ISPAT AND TRADING CO. SILIGURI (WEST BENGAL)</td>
+              </tr>
+              <tr>
+                <td class="key-col">Commodity</td>
+                <td class="val-col" id="doc-commodity">Mustard Oil (Loose)</td>
+              </tr>
+              <tr>
+                <td class="key-col">Quantity</td>
+                <td class="val-col mono" id="doc-quantity">32 Tons (320 Quintals)</td>
+              </tr>
+              <tr>
+                <td class="key-col">Rate</td>
+                <td class="val-col mono" id="doc-rate">₹15,250 + GST Per Qt.</td>
+              </tr>
+              <tr>
+                <td class="key-col">Advance Payment Date</td>
+                <td class="val-col mono" id="doc-advance-date">06/07/2026</td>
+              </tr>
+              <tr>
+                <td class="key-col">Delivery Condition</td>
+                <td class="val-col" id="doc-delivery-condition">Ex-Mill Delivery Lifting: 13/07/2026 to 16/07/2026</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Signature Block -->
+          <div class="contract-signature-block">
+            <div class="signature-box">
+              <span class="sig-header">For Ganesh & Company</span>
+              <span class="sig-title">Proprietor</span>
             </div>
-            <div class="form-group">
-              <label class="form-label">Buyer (Buying Party) *</label>
-              <select id="deal-buyer" class="form-control" required></select>
+          </div>
+
+          <!-- Legal Terms & Conditions (Footer) -->
+          <div class="contract-legal-clauses">
+            <div class="contract-legal-title">TERMS & CONDITIONS:</div>
+            <div class="clause-item"><strong>1.</strong> This contract is confirmed by us as Canvassing Agents between the Buyer and Seller above named, subject to the mutual trade rules and customs of the Sri Ganganagar Mandi.</div>
+            <div class="clause-item"><strong>2.</strong> Advance payment must be remitted strictly by the Buyer on or before the due date stipulated above. In default, Seller reserves the right to cancel or resell the goods at Buyer's risk and cost.</div>
+            <div class="clause-item"><strong>3.</strong> Delivery and lifting shall be effected strictly as per the delivery schedule above. Demurrage, detention, and leakage charges during transit shall be borne as per mutual agreement.</div>
+            <div class="clause-item"><strong>4.</strong> Quality dispute, weight shortage or FFA variation if any, must be reported in writing within 24 hours of tanker arrival at the destination with authorized independent surveyor report.</div>
+            <div class="clause-item"><strong>5.</strong> As Canvassing Agents, Ganesh & Company facilitates deals in good faith and does not guarantee solvency, financial default, or contractual performance of either counterparty.</div>
+            <div class="clause-item"><strong>6.</strong> In the event of any arbitration, dispute, claim or difference arising out of or in connection with this bargain confirmation, the courts at <u>SRI GANGANAGAR (RAJASTHAN)</u> alone shall have exclusive jurisdiction.</div>
+          </div>
+
+          <!-- System Generated Notice at the Bottom of the PDF -->
+          <div class="contract-system-footer">
+            <div class="contract-system-notice">
+              *** THIS BARGAIN CONFIRMATION IS A SYSTEM GENERATED DOCUMENT &bull; NO PHYSICAL SIGNATURE IS REQUIRED ***
             </div>
-            <div class="form-group">
-              <label class="form-label">Quantity in Quintals (100 kg) *</label>
-              <input type="number" step="0.01" id="deal-qty-qtl" class="form-control form-control-mono" placeholder="e.g. 320" required>
-              <span class="form-hint" id="deal-qty-tonnes-hint">Equal to: 0.00 MT</span>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Rate per Quintal (₹) *</label>
-              <input type="number" step="0.01" id="deal-rate-qtl" class="form-control form-control-mono" placeholder="e.g. 15700" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Delivery Date *</label>
-              <input type="date" id="deal-delivery-date" class="form-control" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">GST Applicability</label>
-              <select id="deal-gst-applicable" class="form-control">
-                <option value="1" selected>Plus 5% GST</option>
-                <option value="0">No GST</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Buyer Brokerage (₹ / Tonne)</label>
-              <input type="number" step="0.01" id="deal-buyer-brok" class="form-control form-control-mono" value="50.00">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Seller Brokerage (₹ / Tonne)</label>
-              <input type="number" step="0.01" id="deal-seller-brok" class="form-control form-control-mono" value="50.00">
-            </div>
-            <div class="form-group full-width">
-              <label class="form-label">Internal Notes / Specifications</label>
-              <textarea id="deal-notes" class="form-control" rows="2" placeholder="e.g. Mustard oil contract ex-plant"></textarea>
+            <div class="contract-system-meta" id="doc-system-meta">
+              Computer Generated via Ganesh &amp; Company Platform &bull; Valid across all Mandis &bull; Subject to Sri Ganganagar (Raj.) Jurisdiction
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 2: INSTANT COMMUNICATION PANEL (WhatsApp & Email Dispatch)
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-dispatch">
+    <div class="modal-sheet modal-sheet-lg">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="send" style="width: 18px; height: 18px; color: #10B981;"></i>
+          <h3>Send Bargain Confirmation PDF (WhatsApp &amp; Email)</h3>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-close-dispatch">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="profile-tabs" id="dispatch-tabs">
+          <button class="profile-tab-btn active" data-tab="both">🚀 Send to Both (WhatsApp &amp; Email)</button>
+          <button class="profile-tab-btn" data-tab="whatsapp">💬 WhatsApp Web</button>
+          <button class="profile-tab-btn" data-tab="email">✉️ Email Client</button>
+        </div>
+
+        <!-- Tab 1: Send to Both (WhatsApp & Email) -->
+        <div id="tab-pane-both" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- System Generated PDF Attachment Status Card -->
+          <div class="pdf-attachment-banner">
+            <div class="pdf-icon-badge">
+              <i data-lucide="file-check" style="width: 22px; height: 22px; color: var(--emerald);"></i>
+            </div>
+            <div class="pdf-info-text">
+              <div class="pdf-file-title" id="both-pdf-filename">Bargain_Confirmation_BGN-006.pdf</div>
+              <div class="pdf-file-subtext">System-generated PDF confirmation &bull; Includes mandi clauses &bull; No signature required</div>
+            </div>
+            <button class="btn btn-secondary btn-xs" id="btn-both-download-pdf" title="Download PDF to computer">
+              <i data-lucide="download" style="width: 13px; height: 13px;"></i>
+              <span>Download PDF</span>
+            </button>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">
+                <i data-lucide="phone" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
+                WhatsApp Phone Number
+              </label>
+              <input type="text" class="form-input mono" id="dispatch-both-phone" placeholder="+91 94140 51234">
+            </div>
+            <div class="form-group">
+              <label class="form-label">
+                <i data-lucide="mail" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
+                Recipient Email Address
+              </label>
+              <input type="email" class="form-input" id="dispatch-both-email" placeholder="kailash@harbansoil.com">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Preview of Confirmation Message (With System-Generated PDF Notice)</label>
+            <div class="dispatch-preview-box" id="both-preview-box">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+            <span style="font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="shield-check" style="width: 14px; height: 14px; color: var(--emerald);"></i>
+              Dispatches via WhatsApp Web &amp; Email with System Generated PDF confirmation
+            </span>
+            <button class="btn btn-primary btn-sm" id="btn-dispatch-both-action" style="background: linear-gradient(135deg, #10B981, #059669); font-weight: 700;">
+              <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+              <span>🚀 Send PDF to Both (WhatsApp &amp; Email)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 2: WhatsApp Web -->
+        <div id="tab-pane-whatsapp" style="display: none; flex-direction: column; gap: 14px;">
+          <!-- PDF Attachment indicator -->
+          <div class="pdf-attachment-banner">
+            <div class="pdf-icon-badge">
+              <i data-lucide="file-text" style="width: 20px; height: 20px; color: #25D366;"></i>
+            </div>
+            <div class="pdf-info-text">
+              <div class="pdf-file-title" id="wa-pdf-filename">Bargain_Confirmation_BGN-006.pdf</div>
+              <div class="pdf-file-subtext">System-generated PDF &bull; No physical signature required</div>
+            </div>
+            <button class="btn btn-secondary btn-xs" id="btn-wa-download-pdf">
+              <i data-lucide="download" style="width: 12px; height: 12px;"></i>
+              <span>Download PDF</span>
+            </button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Recipient Phone Number (International format)</label>
+            <input type="text" class="form-input mono" id="dispatch-phone" placeholder="+91 94140 51234">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Formatted Deal Greeting Preview</label>
+            <div class="dispatch-preview-box" id="whatsapp-preview-box">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" id="btn-copy-whatsapp">
+              <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+              <span>Copy Text</span>
+            </button>
+            <a class="btn btn-sm" id="btn-open-whatsapp-web" target="_blank" rel="noopener noreferrer" style="background: #25D366; color: #0B0F19; font-weight: 700;">
+              <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+              <span>Open in WhatsApp Web &rarr;</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Tab 3: Email -->
+        <div id="tab-pane-email" style="display: none; flex-direction: column; gap: 14px;">
+          <!-- PDF Attachment indicator -->
+          <div class="pdf-attachment-banner">
+            <div class="pdf-icon-badge">
+              <i data-lucide="file-check" style="width: 20px; height: 20px; color: var(--gold);"></i>
+            </div>
+            <div class="pdf-info-text">
+              <div class="pdf-file-title" id="email-pdf-filename">Bargain_Confirmation_BGN-006.pdf</div>
+              <div class="pdf-file-subtext">System-generated PDF &bull; No physical signature required</div>
+            </div>
+            <button class="btn btn-secondary btn-xs" id="btn-email-download-pdf">
+              <i data-lucide="download" style="width: 12px; height: 12px;"></i>
+              <span>Download PDF</span>
+            </button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Recipient Email</label>
+            <input type="email" class="form-input" id="dispatch-email-to" placeholder="kailash@harbansoil.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject</label>
+            <input type="text" class="form-input" id="dispatch-email-subject" value="Bargain Confirmation (System Generated PDF) - Ganesh & Company">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Body</label>
+            <div class="dispatch-preview-box" id="email-preview-box"></div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" id="btn-copy-email">
+              <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+              <span>Copy Email Text</span>
+            </button>
+            <button class="btn btn-primary btn-sm" id="btn-open-email-client">
+              <i data-lucide="mail" style="width: 14px; height: 14px;"></i>
+              <span>Open Email Client</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-log-email-sent">
+              <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+              <span>Mark Dispatched</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 3: NEW BARGAIN DEAL ENTRY (Keyboard-First Ctrl+B)
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-new-bargain">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="plus-circle" style="width: 18px; height: 18px; color: var(--emerald);"></i>
+          <h3>New Bargain Contract Entry</h3>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-close-new-bargain">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+
+      <form id="form-new-bargain">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Bargain ID</label>
+              <input type="text" class="form-input mono" id="input-bgn-code" placeholder="Auto-generated (e.g. BGN-007)">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Deal Date *</label>
+              <input type="date" class="form-input" id="input-deal-date" required>
+            </div>
+          </div>
+
+          <!-- Counterparties Autocomplete -->
+          <div class="form-grid-2">
+            <div class="form-group autocomplete-container">
+              <label class="form-label">Seller (Crushing Mill) *</label>
+              <input type="text" class="form-input" id="input-seller-name" placeholder="Type mill name or station..." autocomplete="off" required>
+              <input type="hidden" id="input-seller-id" required>
+              <div class="autocomplete-dropdown" id="seller-autocomplete-dropdown"></div>
+            </div>
+
+            <div class="form-group autocomplete-container">
+              <label class="form-label">Buyer (Wholesaler / Trader) *</label>
+              <input type="text" class="form-input" id="input-buyer-name" placeholder="Type buyer name or station..." autocomplete="off" required>
+              <input type="hidden" id="input-buyer-id" required>
+              <div class="autocomplete-dropdown" id="buyer-autocomplete-dropdown"></div>
+            </div>
+          </div>
+
+          <!-- Commodity & Quantities -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Commodity *</label>
+              <select class="form-select" id="input-product-id" required>
+                <!-- Populated via JS -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Quantity in Quintals (Qtl) *</label>
+              <input type="number" step="any" class="form-input mono" id="input-quantity-qtl" placeholder="e.g. 320 Qtl" required>
+              <span style="font-size: 11px; color: var(--text-dim); margin-top: 2px;" id="equiv-tonnes-label">= 0.0 MT (Tonnes)</span>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Rate (₹ Per Quintal + GST) *</label>
+              <input type="number" step="any" class="form-input mono" id="input-rate-qtl" placeholder="e.g. 15250" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Advance Payment Due Date</label>
+              <input type="date" class="form-input" id="input-advance-date">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Delivery Condition & Lifting Schedule</label>
+            <input type="text" class="form-input" id="input-delivery-condition" placeholder="e.g. Ex-Mill Delivery Lifting: 13/07/2026 to 16/07/2026">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Internal Notes & Quality Specs</label>
+            <textarea class="form-textarea" id="input-deal-notes" rows="2" placeholder="FFA limits, packaging condition, weighment slip terms..."></textarea>
+          </div>
+        </div>
+
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="app.closeModals()">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save & Confirm Deal</button>
+          <button type="button" class="btn btn-ghost" id="btn-cancel-new-bargain">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-new-bargain">
+            <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+            <span>Confirm & Issue Bargain</span>
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal 2: Resell / Add Next Deal in Chain -->
-  <div class="modal-backdrop" id="modal-resell">
-    <div class="modal-dialog">
+  <!-- =========================================================================
+       MODAL 4: PARTY PROFILE PAGE / MODAL
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-party-profile">
+    <div class="modal-sheet modal-sheet-lg">
       <div class="modal-header">
-        <div class="modal-title">Resell / Link Next Deal (Chain Progression)</div>
-        <button class="close-btn" onclick="app.closeModals()"><i data-lucide="x"></i></button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="building-2" style="width: 18px; height: 18px; color: var(--emerald);"></i>
+          <h3 id="profile-party-name">Party Profile</h3>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button class="btn btn-secondary btn-sm" id="btn-edit-party-from-profile" style="display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+            <span>Edit Details</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" id="btn-close-party-profile">
+            <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
       </div>
-      <form id="form-resell">
-        <input type="hidden" id="resell-chain-id">
-        <input type="hidden" id="resell-parent-deal-id">
-        <div class="modal-body">
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Lot / Chain ID</label>
-              <input type="text" id="resell-chain-id-display" class="form-control form-control-mono" readonly>
+
+      <div class="modal-body profile-modal-body">
+        <!-- Executive KPI Strip -->
+        <div class="profile-kpi-strip">
+          <div class="profile-kpi-box">
+            <span class="kpi-title">Total Deals</span>
+            <span class="kpi-value" id="prof-kpi-deals">0</span>
+          </div>
+          <div class="profile-kpi-box">
+            <span class="kpi-title">Traded Volume</span>
+            <span class="kpi-value" id="prof-kpi-volume" style="color: var(--emerald);">0 MT</span>
+          </div>
+          <div class="profile-kpi-box">
+            <span class="kpi-title">Pending Deals</span>
+            <span class="kpi-value" id="prof-kpi-pending" style="color: var(--gold);">0</span>
+          </div>
+          <div class="profile-kpi-box">
+            <span class="kpi-title">Brokerage Due</span>
+            <span class="kpi-value" id="prof-kpi-balance">₹0</span>
+          </div>
+        </div>
+
+        <!-- Tabbed Navigation -->
+        <div class="profile-tabs" id="party-profile-tabs">
+          <button class="profile-tab-btn active" data-tab="contacts">Overview & Contacts</button>
+          <button class="profile-tab-btn" data-tab="deals">Recent Deals Register</button>
+          <button class="profile-tab-btn" data-tab="commodities">Commodity History</button>
+        </div>
+
+        <!-- Tab 1: Overview & Contacts -->
+        <div id="tab-pane-prof-contacts" style="display: flex; flex-direction: column; gap: 14px;">
+          <div id="prof-meta-details" style="font-size: 13px; color: var(--text-muted); line-height: 1.6;"></div>
+          <h4 style="font-size: 13px; font-weight: 700; color: #FFFFFF; text-transform: uppercase;">Contact Hierarchy</h4>
+          <div class="contact-hierarchy-list" id="prof-contacts-list"></div>
+        </div>
+
+        <!-- Tab 2: Recent Deals -->
+        <div id="tab-pane-prof-deals" style="display: none;">
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Bargain ID</th>
+                  <th>Date</th>
+                  <th>Role</th>
+                  <th>Counterparty</th>
+                  <th>Commodity</th>
+                  <th>Qty (MT)</th>
+                  <th>Rate</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-prof-deals"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 3: Commodity History -->
+        <div id="tab-pane-prof-commodities" style="display: none; flex-direction: column; gap: 12px;">
+          <div class="commodity-dist-list" id="prof-commodity-bars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 4B: ADD / EDIT PARTY MASTER MODAL
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-party-form">
+    <div class="modal-sheet modal-sheet-lg">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="building" style="width: 18px; height: 18px; color: var(--emerald);"></i>
+          <h3 id="party-form-modal-title">Add New Party Master</h3>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-close-party-form">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+
+      <form id="form-party">
+        <input type="hidden" id="party-form-id">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px; max-height: 72vh; overflow-y: auto; padding-right: 8px;">
+          <!-- Section 1: Firm Identity & Mandi Station -->
+          <div>
+            <h4 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="briefcase" style="width: 13px; height: 13px;"></i> Firm Identity & Station
+            </h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label">Legal Name (as per GST) *</label>
+                <input type="text" class="form-input" id="party-form-legal-name" placeholder="e.g. HARBANS INDUSTRIES, SANGARIA" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Trade / Display Name</label>
+                <input type="text" class="form-input" id="party-form-trade-name" placeholder="e.g. Harbans Industries">
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Product</label>
-              <input type="text" id="resell-product-display" class="form-control" readonly>
+            <div class="form-grid-2" style="margin-top: 10px;">
+              <div class="form-group">
+                <label class="form-label">Party Role Type *</label>
+                <select class="form-select" id="party-form-type" required>
+                  <option value="BOTH">Dual Role (Buyer & Seller / Trader)</option>
+                  <option value="SELLER">Seller / Crushing Mill (Oil Expeller)</option>
+                  <option value="BUYER">Buyer / Wholesaler (Consumer)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Mandi Station / City *</label>
+                <input type="text" class="form-input" id="party-form-station" placeholder="e.g. Sangaria, Rajasthan" required>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Instructing Seller (Previous Buyer) *</label>
-              <select id="resell-seller" class="form-control" required></select>
+          </div>
+
+          <!-- Section 2: Bank Account Details (Mandi Settlement) -->
+          <div style="background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 14px;">
+            <h4 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--emerald); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="landmark" style="width: 14px; height: 14px;"></i> Bank Settlement Details (RTGS / NEFT)
+            </h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label">Bank Name</label>
+                <input type="text" class="form-input" id="party-form-bank-name" placeholder="e.g. State Bank of India, HDFC Bank, PNB">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Account Number</label>
+                <input type="text" class="form-input mono" id="party-form-bank-account-no" placeholder="e.g. 38910029381">
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Party Instruction Date *</label>
-              <input type="date" id="resell-inst-date" class="form-control" required>
+            <div class="form-grid-2" style="margin-top: 10px;">
+              <div class="form-group">
+                <label class="form-label">IFSC Code (11 Chars)</label>
+                <input type="text" class="form-input mono" id="party-form-bank-ifsc" placeholder="e.g. SBIN0031124" style="text-transform: uppercase;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Branch Name / Mandi Yard</label>
+                <input type="text" class="form-input" id="party-form-bank-branch" placeholder="e.g. Sangaria Mandi Branch">
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Party Authorized Rate / Qtl (₹) *</label>
-              <input type="number" step="0.01" id="resell-auth-rate" class="form-control form-control-mono" placeholder="e.g. 16450" required>
+          </div>
+
+          <!-- Section 3: Tax & Credit Profile -->
+          <div>
+            <h4 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="file-check" style="width: 13px; height: 13px;"></i> Tax Identifiers & Credit
+            </h4>
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label class="form-label">GSTIN (15 Digits)</label>
+                <input type="text" class="form-input mono" id="party-form-gstin" placeholder="08AAAFH1234K1Z5" style="text-transform: uppercase;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">PAN Number</label>
+                <input type="text" class="form-input mono" id="party-form-pan" placeholder="AAAFH1234K" style="text-transform: uppercase;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Credit Limit (₹)</label>
+                <input type="number" step="any" class="form-input mono" id="party-form-credit-limit" placeholder="1500000">
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Actual New Buyer *</label>
-              <select id="resell-buyer" class="form-control" required></select>
+          </div>
+
+          <!-- Section 4: Contact Hierarchy & Communication -->
+          <div>
+            <h4 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="phone" style="width: 13px; height: 13px;"></i> Key Contacts & Mandi Address
+            </h4>
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label class="form-label">Contact Person / Owner</label>
+                <input type="text" class="form-input" id="party-form-contact-person" placeholder="e.g. Kailash Chand Bansal">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone / WhatsApp</label>
+                <input type="text" class="form-input" id="party-form-phone" placeholder="e.g. +91 94140 51234">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-input" id="party-form-email" placeholder="e.g. info@harbansoil.com">
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Actual Resale Rate / Qtl (₹) *</label>
-              <input type="number" step="0.01" id="resell-actual-rate" class="form-control form-control-mono" placeholder="e.g. 16475" required>
+            <div class="form-group" style="margin-top: 10px;">
+              <label class="form-label">Mandi Yard / Factory Address</label>
+              <input type="text" class="form-input" id="party-form-address" placeholder="e.g. Industrial Area, Mandi Yard, Sangaria">
             </div>
-            <div class="form-group">
-              <label class="form-label">Resale Quantity (Quintals) *</label>
-              <input type="number" step="0.01" id="resell-qty-qtl" class="form-control form-control-mono" required>
-              <span class="form-hint" id="resell-qty-hint">Max available: 320 Qtl</span>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Delivery Date *</label>
-              <input type="date" id="resell-delivery-date" class="form-control" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Buyer Brokerage (₹ / MT)</label>
-              <input type="number" step="0.01" id="resell-buyer-brok" class="form-control form-control-mono" value="50.00">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Seller Brokerage (₹ / MT)</label>
-              <input type="number" step="0.01" id="resell-seller-brok" class="form-control form-control-mono" value="50.00">
-            </div>
-            <div class="form-group full-width">
-              <!-- Live Profit Calculation Display -->
-              <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 12px; border-radius: 8px;">
-                <div style="font-size: 11px; color: #6EE7B7; text-transform: uppercase; font-weight: 700;">Live Profit Difference Preview</div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                  <span id="resell-calc-diff-text" style="font-size: 13px;">Diff: ₹0.00 / Qtl</span>
-                  <span id="resell-calc-profit-text" class="text-profit" style="font-size: 16px; font-weight: 800;">Profit: ₹0.00</span>
-                </div>
+          </div>
+
+          <!-- Section 5: Default Brokerage Rates -->
+          <div>
+            <h4 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="percent" style="width: 13px; height: 13px;"></i> Default Brokerage Terms
+            </h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label">Buyer Brokerage (₹ Per Tonne)</label>
+                <input type="number" step="any" class="form-input mono" id="party-form-brokerage-buyer" value="50">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Seller Brokerage (₹ Per Tonne)</label>
+                <input type="number" step="any" class="form-input mono" id="party-form-brokerage-seller" value="50">
               </div>
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="app.closeModals()">Cancel</button>
-          <button type="submit" class="btn btn-success">Link Resale Deal</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
-  <!-- Modal 3: Record Brokerage Payment -->
-  <div class="modal-backdrop" id="modal-payment">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <div class="modal-title">Record Brokerage Payment / Receipt</div>
-        <button class="close-btn" onclick="app.closeModals()"><i data-lucide="x"></i></button>
-      </div>
-      <form id="form-payment">
-        <div class="modal-body">
-          <div class="form-grid">
-            <div class="form-group full-width">
-              <label class="form-label">Party Name *</label>
-              <select id="pay-party-id" class="form-control" required></select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Amount (₹) *</label>
-              <input type="number" step="0.01" id="pay-amount" class="form-control form-control-mono" placeholder="e.g. 3200" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Entry Date *</label>
-              <input type="date" id="pay-date" class="form-control" required>
-            </div>
-            <div class="form-group full-width">
-              <label class="form-label">Reference # / UTR / Cheque</label>
-              <input type="text" id="pay-ref" class="form-control" placeholder="e.g. NEFT-883921">
-            </div>
-            <div class="form-group full-width">
-              <label class="form-label">Notes</label>
-              <input type="text" id="pay-notes" class="form-control" placeholder="Payment received via bank transfer">
-            </div>
-          </div>
-        </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="app.closeModals()">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save Receipt</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal 4: BUSY XML / JSON Voucher Viewer -->
-  <div class="modal-backdrop" id="modal-busy-voucher">
-    <div class="modal-dialog" style="max-width: 750px;">
-      <div class="modal-header">
-        <div class="modal-title" id="busy-voucher-modal-title">BUSY Voucher Payload</div>
-        <button class="close-btn" onclick="app.closeModals()"><i data-lucide="x"></i></button>
-      </div>
-      <div class="modal-body">
-        <div class="flex-between gap-12" style="margin-bottom: 12px;">
-          <span class="badge badge-status-confirmed">BUSY 18 / 21 XML Format</span>
-          <button class="btn btn-secondary btn-sm" id="btn-copy-busy-payload">
-            <i data-lucide="copy"></i>
-            <span>Copy Payload</span>
+          <button type="button" class="btn btn-ghost" id="btn-cancel-party-form">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-party-form">
+            <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+            <span id="btn-party-form-label">Save Party Master</span>
           </button>
         </div>
-        <pre class="code-block" id="busy-voucher-code"></pre>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 5: COMMAND PALETTE (⌘K)
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-command-palette">
+    <div class="modal-sheet command-palette-sheet">
+      <div class="command-input-row">
+        <i data-lucide="search" style="width: 18px; height: 18px; color: var(--emerald);"></i>
+        <input type="text" class="command-search-input" id="command-palette-input" placeholder="Type a command, deal ID, party name..." autocomplete="off">
+        <kbd>ESC to exit</kbd>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="app.closeModals()">Close</button>
+      <div class="command-results-list" id="command-palette-results">
+        <!-- Injected via JS -->
       </div>
     </div>
   </div>
 
-  <!-- Toast Notification Container -->
+  <!-- Toast Notification Stack -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- JS Logic Scripts -->
+  <!-- Application Logic -->
   <script src="/static/js/app.js"></script>
-  <script src="/static/js/deal_entry.js"></script>
-  <script src="/static/js/deal_chain.js"></script>
-  <script src="/static/js/billing.js"></script>
-  <script src="/static/js/ledger.js"></script>
-  <script src="/static/js/reports.js"></script>
-  <script src="/static/js/masters.js"></script>
-  <script src="/static/js/busy_adapter.js"></script>
-  <script src="/static/js/test_runner.js"></script>
 </body>
 </html>

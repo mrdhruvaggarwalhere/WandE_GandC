@@ -60,6 +60,9 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         actor_role = self.headers.get('X-User-Role', 'BROKER')
         return actor_name, actor_role
 
+    def do_HEAD(self):
+        self.do_GET()
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
@@ -73,7 +76,7 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return self.serve_file(file_path)
 
         # Serve SPA Index
-        if path in ('/', '/index.html', '/deals', '/chains', '/billing', '/ledger', '/reports', '/masters', '/busy', '/tests'):
+        if path in ('/', '/index.html', '/deals', '/bargains', '/parties', '/dispatches', '/market-rates', '/reports', '/trash', '/chains', '/billing', '/ledger', '/masters', '/busy', '/tests'):
             index_path = os.path.join(TEMPLATES_DIR, "index.html")
             if os.path.exists(index_path):
                 return self.serve_file(index_path, content_type="text/html; charset=utf-8")
@@ -100,20 +103,44 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 conn.close()
                 return self.send_json_response(parties)
 
+            elif path.startswith('/api/parties/') and path.endswith('/profile'):
+                party_id = path.split('/')[3]
+                conn.close()
+                profile = api_routes.get_party_profile(party_id)
+                return self.send_json_response(profile)
+
             elif path == '/api/products':
                 cur.execute("SELECT * FROM products ORDER BY name ASC")
                 products = [dict(r) for r in cur.fetchall()]
                 conn.close()
                 return self.send_json_response(products)
 
-            elif path == '/api/deals':
+            elif path == '/api/market-rates':
+                conn.close()
+                rates = api_routes.get_market_rates()
+                return self.send_json_response(rates)
+
+            elif path == '/api/dispatch-logs':
+                conn.close()
+                logs = api_routes.get_dispatch_logs()
+                return self.send_json_response(logs)
+
+            elif path == '/api/deals' or path == '/api/bargains':
                 chain_id = query_params.get('chain_id', [None])[0]
                 status_filter = query_params.get('status', [None])[0]
                 party_filter = query_params.get('party_id', [None])[0]
+                only_deleted = query_params.get('only_deleted', ['0'])[0] == '1'
+                include_deleted = query_params.get('include_deleted', ['0'])[0] == '1'
 
                 sql = """
                     SELECT 
-                        d.*, b.legal_name AS buyer_name, s.legal_name AS seller_name,
+                        d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,
+                        b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station,
+                        b.trade_name AS buyer_trade_name, b.gstin AS buyer_gstin, b.pan AS buyer_pan,
+                        b.phone AS buyer_phone, b.contacts_json AS buyer_contacts,
+                        s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
+                        s.trade_name AS seller_trade_name, s.gstin AS seller_gstin, s.pan AS seller_pan,
+                        s.phone AS seller_phone, s.contacts_json AS seller_contacts,
                         p.name AS product_name, c.original_bill_seller_id, c.final_bill_buyer_id
                     FROM deals d
                     JOIN parties b ON d.buyer_id = b.id
@@ -123,6 +150,11 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     WHERE 1=1
                 """
                 params = []
+                if only_deleted:
+                    sql += " AND d.is_deleted = 1"
+                elif not include_deleted:
+                    sql += " AND COALESCE(d.is_deleted, 0) = 0"
+
                 if chain_id:
                     sql += " AND d.chain_id = ?"
                     params.append(chain_id)
@@ -256,6 +288,20 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 result = api_routes.resell_and_link_deal(body, actor_name=actor_name, actor_role=actor_role)
                 return self.send_json_response(result, 201)
 
+            elif path.startswith('/api/deals/') and path.endswith('/trash'):
+                deal_id = path.split('/')[3]
+                result = api_routes.soft_delete_deal(deal_id, actor_name, actor_role)
+                return self.send_json_response(result)
+
+            elif path.startswith('/api/deals/') and path.endswith('/restore'):
+                deal_id = path.split('/')[3]
+                result = api_routes.restore_deal(deal_id, actor_name, actor_role)
+                return self.send_json_response(result)
+
+            elif path == '/api/dispatch-logs':
+                result = api_routes.create_dispatch_log(body, actor_name)
+                return self.send_json_response(result, 201)
+
             elif path.startswith('/api/deals/') and path.endswith('/cancel'):
                 deal_id = path.split('/')[3]
                 reason = body.get('reason', 'Cancelled by user')
@@ -270,9 +316,13 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 result = api_routes.approve_billing_instruction(instruction_id, actor_name, actor_role, remarks)
                 return self.send_json_response(result)
 
-            elif path == '/api/parties':
+            elif path == '/api/parties' or (path.startswith('/api/parties/') and not path.endswith('/profile')):
+                if path.startswith('/api/parties/'):
+                    p_id = path.split('/')[3]
+                    if not body.get('id'):
+                        body['id'] = p_id
                 result = self.save_party(body, actor_name, actor_role)
-                return self.send_json_response(result, 201)
+                return self.send_json_response(result, 200 if body.get('id') else 201)
 
             elif path == '/api/products':
                 result = self.save_product(body, actor_name, actor_role)
@@ -294,6 +344,50 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 self.send_error_json(f"POST endpoint not found: {path}", 404)
 
+        except Exception as e:
+            self.send_error_json(str(e), 400)
+
+    def do_PUT(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        actor_name, actor_role = self.get_actor_info()
+
+        if actor_role == 'VIEWER':
+            return self.send_error_json("Viewer role has read-only access. Mutation forbidden.", 403)
+
+        try:
+            body = self.read_json_body()
+            if path == '/api/parties' or (path.startswith('/api/parties/') and not path.endswith('/profile')):
+                if path.startswith('/api/parties/'):
+                    p_id = path.split('/')[3]
+                    if not body.get('id'):
+                        body['id'] = p_id
+                result = self.save_party(body, actor_name, actor_role)
+                return self.send_json_response(result)
+            else:
+                self.send_error_json(f"PUT endpoint not found: {path}", 404)
+        except Exception as e:
+            self.send_error_json(str(e), 400)
+
+    def do_DELETE(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        actor_name, actor_role = self.get_actor_info()
+
+        if actor_role == 'VIEWER':
+            return self.send_error_json("Viewer role has read-only access. Mutation forbidden.", 403)
+
+        try:
+            if path.startswith('/api/deals/') and (path.endswith('/permanent') or path.endswith('/purge')):
+                deal_id = path.split('/')[3]
+                result = api_routes.purge_deal_permanent(deal_id, actor_name, actor_role)
+                return self.send_json_response(result)
+            elif path.startswith('/api/deals/'):
+                deal_id = path.split('/')[3]
+                result = api_routes.soft_delete_deal(deal_id, actor_name, actor_role)
+                return self.send_json_response(result)
+            else:
+                self.send_error_json(f"DELETE endpoint not found: {path}", 404)
         except Exception as e:
             self.send_error_json(str(e), 400)
 
@@ -358,17 +452,50 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         party_id = data.get('id') or f"PTY-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         now_iso = datetime.now().isoformat()
 
+        # Fetch existing record if any to preserve unpassed attributes
+        cur.execute("SELECT * FROM parties WHERE id = ?", (party_id,))
+        existing = cur.fetchone()
+        existing_dict = dict(existing) if existing else {}
+
+        trade_name = data.get('trade_name') if 'trade_name' in data and data.get('trade_name') is not None else existing_dict.get('trade_name', legal_name)
+        mandi_station = data.get('mandi_station') if 'mandi_station' in data and data.get('mandi_station') is not None else (data.get('city') or existing_dict.get('mandi_station') or '')
+        party_type = data.get('party_type') or existing_dict.get('party_type', 'BOTH')
+        address = data.get('address') if 'address' in data else existing_dict.get('address', '')
+        city = data.get('city') if 'city' in data else (mandi_station or existing_dict.get('city', ''))
+        state = data.get('state') if 'state' in data else existing_dict.get('state', 'Rajasthan')
+        contact_person = data.get('contact_person') if 'contact_person' in data else existing_dict.get('contact_person', '')
+        phone = data.get('phone') if 'phone' in data else existing_dict.get('phone', '')
+        email = data.get('email') if 'email' in data else existing_dict.get('email', '')
+        gstin = data.get('gstin') if 'gstin' in data else existing_dict.get('gstin', '')
+        pan = data.get('pan') if 'pan' in data else existing_dict.get('pan', '')
+        
+        bank_name = data.get('bank_name') if 'bank_name' in data else existing_dict.get('bank_name', '')
+        bank_account_no = data.get('bank_account_no') if 'bank_account_no' in data else existing_dict.get('bank_account_no', '')
+        bank_ifsc = ((data.get('bank_ifsc') if 'bank_ifsc' in data else existing_dict.get('bank_ifsc', '')) or '').strip().upper()
+        bank_branch = data.get('bank_branch') if 'bank_branch' in data else existing_dict.get('bank_branch', '')
+
+        default_buyer = float(data.get('default_buyer_brokerage_per_tonne', existing_dict.get('default_buyer_brokerage_per_tonne', 50.0) or 50.0))
+        default_seller = float(data.get('default_seller_brokerage_per_tonne', existing_dict.get('default_seller_brokerage_per_tonne', 50.0) or 50.0))
+        brokerage_enabled = int(data.get('brokerage_enabled', existing_dict.get('brokerage_enabled', 1)))
+        credit_limit = float(data.get('credit_limit', existing_dict.get('credit_limit', 0.0) or 0.0))
+        notes = data.get('notes') if 'notes' in data else existing_dict.get('notes', '')
+        busy_ledger_id = data.get('busy_ledger_id') if 'busy_ledger_id' in data else existing_dict.get('busy_ledger_id', '')
+        is_active = int(data.get('is_active', existing_dict.get('is_active', 1)))
+        created_at = existing_dict.get('created_at', now_iso)
+
         cur.execute("""
             INSERT INTO parties (
-                id, legal_name, normalized_name, party_type, address, city, state,
-                contact_person, phone, email, gstin, default_buyer_brokerage_per_tonne,
-                default_seller_brokerage_per_tonne, brokerage_enabled, credit_limit, notes,
+                id, legal_name, trade_name, normalized_name, party_type, mandi_station, address, city, state,
+                contact_person, phone, email, gstin, pan, bank_name, bank_account_no, bank_ifsc, bank_branch,
+                default_buyer_brokerage_per_tonne, default_seller_brokerage_per_tonne, brokerage_enabled, credit_limit, notes,
                 busy_ledger_id, is_active, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 legal_name = excluded.legal_name,
+                trade_name = excluded.trade_name,
                 normalized_name = excluded.normalized_name,
                 party_type = excluded.party_type,
+                mandi_station = excluded.mandi_station,
                 address = excluded.address,
                 city = excluded.city,
                 state = excluded.state,
@@ -376,26 +503,30 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 phone = excluded.phone,
                 email = excluded.email,
                 gstin = excluded.gstin,
+                pan = excluded.pan,
+                bank_name = excluded.bank_name,
+                bank_account_no = excluded.bank_account_no,
+                bank_ifsc = excluded.bank_ifsc,
+                bank_branch = excluded.bank_branch,
                 default_buyer_brokerage_per_tonne = excluded.default_buyer_brokerage_per_tonne,
                 default_seller_brokerage_per_tonne = excluded.default_seller_brokerage_per_tonne,
                 brokerage_enabled = excluded.brokerage_enabled,
+                credit_limit = excluded.credit_limit,
+                notes = excluded.notes,
                 busy_ledger_id = excluded.busy_ledger_id,
                 is_active = excluded.is_active,
                 updated_at = excluded.updated_at
         """, (
-            party_id, legal_name, legal_name.lower(), data.get('party_type', 'BOTH'),
-            data.get('address', ''), data.get('city', ''), data.get('state', ''),
-            data.get('contact_person', ''), data.get('phone', ''), data.get('email', ''),
-            data.get('gstin', ''), float(data.get('default_buyer_brokerage_per_tonne', 50.0)),
-            float(data.get('default_seller_brokerage_per_tonne', 50.0)), int(data.get('brokerage_enabled', 1)),
-            float(data.get('credit_limit', 0.0)), data.get('notes', ''), data.get('busy_ledger_id', ''),
-            int(data.get('is_active', 1)), now_iso, now_iso
+            party_id, legal_name, trade_name, legal_name.lower(), party_type, mandi_station, address, city, state,
+            contact_person, phone, email, gstin, pan, bank_name, bank_account_no, bank_ifsc, bank_branch,
+            default_buyer, default_seller, brokerage_enabled, credit_limit, notes,
+            busy_ledger_id, is_active, created_at, now_iso
         ))
 
-        log_audit(conn, "parties", party_id, "SAVE", actor_name, actor_role, None, {"legal_name": legal_name}, "Saved party master")
+        log_audit(conn, "parties", party_id, "SAVE", actor_name, actor_role, existing_dict or None, {"legal_name": legal_name}, "Saved party master")
         conn.commit()
         conn.close()
-        return {'id': party_id, 'legal_name': legal_name}
+        return {'id': party_id, 'legal_name': legal_name, 'status': 'SAVED'}
 
     def save_product(self, data: Dict[str, Any], actor_name: str, actor_role: str) -> Dict[str, Any]:
         conn = get_db_connection()
