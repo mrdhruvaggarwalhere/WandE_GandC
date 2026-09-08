@@ -235,7 +235,7 @@ const app = {
       'parties': 'Party Directory',
       'dispatches': 'WhatsApp & Email Logs',
       'market-rates': 'Market Rates & Mandis',
-      'reports': 'Reports & Brokerage',
+      'reports': 'Trade Reports & Analytics',
       'trash': 'Trash / Recycle Bin'
     };
     if (breadcrumb) {
@@ -801,7 +801,8 @@ const app = {
       document.getElementById('prof-kpi-deals').textContent = kpis.total_deals;
       document.getElementById('prof-kpi-volume').textContent = `${Math.round(kpis.confirmed_volume_mt)} MT`;
       document.getElementById('prof-kpi-pending').textContent = kpis.pending_deals;
-      document.getElementById('prof-kpi-balance').textContent = `₹${Math.round(kpis.balance_due).toLocaleString('en-IN')}`;
+      const stationEl = document.getElementById('prof-kpi-station');
+      if (stationEl) stationEl.textContent = party.mandi_station || party.city || 'Mandi Yard';
 
       const bankHtml = party.bank_name ? `
         <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 12px; margin-top: 12px;">
@@ -1196,31 +1197,40 @@ Phone: 94619-40113 / 94619-40114`
 
   // ==========================================================================
   // SCREEN 9: REPORTS & ANALYTICS
-  // ==========================================================================
   renderReports() {
     const m = this.dashboardMetrics;
     if (!m) return;
 
-    document.getElementById('rep-total-brokerage').textContent = `₹${Math.round(m.total_brokerage || 0).toLocaleString('en-IN')}`;
-    document.getElementById('rep-diff-profit').textContent = `₹${Math.round(m.total_price_diff_profit || 0).toLocaleString('en-IN')}`;
-    document.getElementById('rep-net-earnings').textContent = `₹${Math.round(m.net_earnings || 0).toLocaleString('en-IN')}`;
+    const totalDealsEl = document.getElementById('rep-total-deals');
+    if (totalDealsEl) totalDealsEl.textContent = m.total_active_deals || this.deals.length;
 
-    const totalRec = (m.party_receivables || []).reduce((acc, r) => acc + (r.balance_due || 0), 0);
-    document.getElementById('rep-receivables').textContent = `₹${Math.round(totalRec).toLocaleString('en-IN')}`;
+    const volEl = document.getElementById('rep-traded-volume');
+    if (volEl) volEl.textContent = `${Math.round(m.active_traded_volume_mt || 0)} MT`;
+
+    const diffProfitEl = document.getElementById('rep-diff-profit');
+    if (diffProfitEl) diffProfitEl.textContent = `₹${Math.round(m.total_price_diff_profit || 0).toLocaleString('en-IN')}`;
+
+    const partiesCountEl = document.getElementById('rep-active-parties');
+    if (partiesCountEl) partiesCountEl.textContent = m.active_parties_count || this.parties.length;
 
     const tbody = document.getElementById('tbody-party-receivables');
-    if (tbody && m.party_receivables) {
-      tbody.innerHTML = m.party_receivables.map(r => `
-        <tr>
-          <td><strong>${this.escapeHtml(r.party_name)}</strong></td>
-          <td><span class="station-tag">📍 Mandi Station</span></td>
-          <td class="mono">Registered</td>
-          <td class="rate-figure" style="color: ${r.balance_due > 0 ? 'var(--gold)' : 'var(--emerald)'};">₹${Math.round(r.balance_due).toLocaleString('en-IN')}</td>
-          <td>
-            <button class="btn btn-secondary btn-xs" onclick="app.openPartyProfileModal('${r.party_id}')">View Ledger</button>
-          </td>
-        </tr>
-      `).join('');
+    if (tbody) {
+      tbody.innerHTML = this.parties.map(p => {
+        const partyDeals = this.deals.filter(d => d.buyer_id === p.id || d.seller_id === p.id);
+        const totalTonnes = partyDeals.reduce((sum, d) => sum + (d.quantity_tonnes || (d.quantity_qtl * 0.1) || 0), 0);
+        return `
+          <tr>
+            <td><strong>${this.escapeHtml(p.legal_name)}</strong></td>
+            <td><span class="station-tag">📍 ${this.escapeHtml(p.mandi_station || p.city || 'Mandi Yard')}</span></td>
+            <td><span class="badge ${p.party_type === 'SELLER' ? 'badge-cancelled' : p.party_type === 'BUYER' ? 'badge-confirmed' : 'badge-revised'}">${p.party_type}</span></td>
+            <td class="mono">${partyDeals.length} Contracts</td>
+            <td class="rate-figure" style="color: var(--emerald); font-weight: 700;">${totalTonnes.toFixed(1)} MT</td>
+            <td>
+              <button class="btn btn-secondary btn-xs" onclick="app.openPartyProfileModal('${p.id}')">View Profile</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
   },
 
@@ -1496,9 +1506,6 @@ Phone: 94619-40113 / 94619-40114`
     document.getElementById('party-form-id').value = '';
     document.getElementById('party-form-modal-title').textContent = 'Add New Party Master';
     document.getElementById('btn-party-form-label').textContent = 'Create Party Master';
-
-    document.getElementById('party-form-brokerage-buyer').value = '50';
-    document.getElementById('party-form-brokerage-seller').value = '50';
     document.getElementById('party-form-type').value = 'BOTH';
 
     modal.classList.add('active');
@@ -1538,13 +1545,11 @@ Phone: 94619-40113 / 94619-40114`
     document.getElementById('party-form-pan').value = party.pan || '';
     document.getElementById('party-form-credit-limit').value = party.credit_limit || 0;
 
-    // Contact & Brokerage
+    // Contact Details
     document.getElementById('party-form-contact-person').value = party.contact_person || '';
     document.getElementById('party-form-phone').value = party.phone || '';
     document.getElementById('party-form-email').value = party.email || '';
     document.getElementById('party-form-address').value = party.address || '';
-    document.getElementById('party-form-brokerage-buyer').value = party.default_buyer_brokerage_per_tonne ?? 50;
-    document.getElementById('party-form-brokerage-seller').value = party.default_seller_brokerage_per_tonne ?? 50;
 
     modal.classList.add('active');
     document.getElementById('party-form-legal-name')?.focus();
@@ -1577,8 +1582,8 @@ Phone: 94619-40113 / 94619-40114`
       phone: document.getElementById('party-form-phone').value.trim(),
       email: document.getElementById('party-form-email').value.trim(),
       address: document.getElementById('party-form-address').value.trim(),
-      default_buyer_brokerage_per_tonne: parseFloat(document.getElementById('party-form-brokerage-buyer').value) || 50,
-      default_seller_brokerage_per_tonne: parseFloat(document.getElementById('party-form-brokerage-seller').value) || 50
+      default_buyer_brokerage_per_tonne: 0.0,
+      default_seller_brokerage_per_tonne: 0.0
     };
 
     try {

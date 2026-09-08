@@ -86,7 +86,7 @@
         <a class="nav-link" data-view="reports" id="nav-reports">
           <div class="nav-link-left">
             <i data-lucide="bar-chart-3" class="nav-icon"></i>
-            <span class="nav-label">Reports & Brokerage</span>
+            <span class="nav-label">Trade Reports & Analytics</span>
           </div>
         </a>
 
@@ -482,41 +482,41 @@
         <section class="view-pane" id="view-reports">
           <div class="view-header">
             <div class="view-title-group">
-              <h2>Reports & Analytics</h2>
-              <p>Brokerage revenue audits, volume summaries & party receivables ledger.</p>
+              <h2>Trade Reports & Analytics</h2>
+              <p>Traded commodity volume summaries, bargain records & fulfillment metrics.</p>
             </div>
             <button class="btn btn-secondary btn-sm" id="btn-export-excel-report">
               <i data-lucide="file-spreadsheet" style="width: 14px; height: 14px;"></i>
-              <span>Export Full Excel Ledger</span>
+              <span>Export Full Excel Register</span>
             </button>
           </div>
 
           <div class="kpi-grid">
             <div class="kpi-card">
-              <span class="kpi-title">Total Brokerage Accrued</span>
-              <span class="kpi-value" id="rep-total-brokerage">₹0</span>
-              <span class="kpi-subtext">50% Buyer / 50% Seller per MT standard</span>
+              <span class="kpi-title">Total Active Contracts</span>
+              <span class="kpi-value" id="rep-total-deals">0</span>
+              <span class="kpi-subtext">Executed canvassing contracts</span>
             </div>
             <div class="kpi-card">
-              <span class="kpi-title">Price Difference Profit</span>
-              <span class="kpi-value" id="rep-diff-profit" style="color: var(--emerald);">₹0</span>
-              <span class="kpi-subtext">Resale lot chain arbitrage earnings</span>
+              <span class="kpi-title">Total Traded Volume</span>
+              <span class="kpi-value" id="rep-traded-volume" style="color: var(--emerald);">0 MT</span>
+              <span class="kpi-subtext">Total physical commodity traded</span>
             </div>
             <div class="kpi-card">
-              <span class="kpi-title">Net Brokerage Earnings</span>
-              <span class="kpi-value" id="rep-net-earnings" style="color: var(--gold);">₹0</span>
-              <span class="kpi-subtext">Total platform gross revenue</span>
+              <span class="kpi-title">Resale Arbitrage Profit</span>
+              <span class="kpi-value" id="rep-diff-profit" style="color: var(--gold);">₹0</span>
+              <span class="kpi-subtext">Resale lot chain price difference</span>
             </div>
             <div class="kpi-card">
-              <span class="kpi-title">Outstanding Receivables</span>
-              <span class="kpi-value" id="rep-receivables">₹0</span>
-              <span class="kpi-subtext">Across active trading parties</span>
+              <span class="kpi-title">Active Mandi Parties</span>
+              <span class="kpi-value" id="rep-active-parties">0</span>
+              <span class="kpi-subtext">Registered crushing mills & buyers</span>
             </div>
           </div>
 
           <div class="card-panel">
             <div class="panel-header">
-              <div class="panel-title">Party-Wise Brokerage Receivables</div>
+              <div class="panel-title">Party-Wise Traded Volume Register</div>
             </div>
             <div class="data-table-container">
               <table class="data-table">
@@ -524,8 +524,9 @@
                   <tr>
                     <th>Party Legal Name</th>
                     <th>Station</th>
-                    <th>GSTIN</th>
-                    <th>Balance Due (₹)</th>
+                    <th>Role Type</th>
+                    <th>Total Deals</th>
+                    <th>Total Volume (MT)</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -1009,8 +1010,8 @@
             <span class="kpi-value" id="prof-kpi-pending" style="color: var(--gold);">0</span>
           </div>
           <div class="profile-kpi-box">
-            <span class="kpi-title">Brokerage Due</span>
-            <span class="kpi-value" id="prof-kpi-balance">₹0</span>
+            <span class="kpi-title">Mandi Station</span>
+            <span class="kpi-value" id="prof-kpi-station" style="font-size: 13px; font-weight: 600; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">—</span>
           </div>
         </div>
 
@@ -1177,23 +1178,6 @@
             <div class="form-group" style="margin-top: 10px;">
               <label class="form-label">Mandi Yard / Factory Address</label>
               <input type="text" class="form-input" id="party-form-address" placeholder="e.g. Industrial Area, Mandi Yard, Sangaria">
-            </div>
-          </div>
-
-          <!-- Section 5: Default Brokerage Rates -->
-          <div>
-            <h4 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-              <i data-lucide="percent" style="width: 13px; height: 13px;"></i> Default Brokerage Terms
-            </h4>
-            <div class="form-grid-2">
-              <div class="form-group">
-                <label class="form-label">Buyer Brokerage (₹ Per Tonne)</label>
-                <input type="number" step="any" class="form-input mono" id="party-form-brokerage-buyer" value="50">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Seller Brokerage (₹ Per Tonne)</label>
-                <input type="number" step="any" class="form-input mono" id="party-form-brokerage-seller" value="50">
-              </div>
             </div>
           </div>
         </div>

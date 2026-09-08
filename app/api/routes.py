@@ -82,10 +82,10 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
     """)
     fin_row = cur.fetchone()
     total_price_diff_profit = fin_row['total_profit']
-    total_buyer_brokerage = fin_row['total_buyer_brok']
-    total_seller_brokerage = fin_row['total_seller_brok']
-    total_brokerage = fin_row['total_brok']
-    net_earnings = total_price_diff_profit + total_brokerage
+    total_buyer_brokerage = 0.0
+    total_seller_brokerage = 0.0
+    total_brokerage = 0.0
+    net_earnings = total_price_diff_profit
 
     # Commodity Volume Distribution
     cur.execute("""
@@ -113,19 +113,8 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
             'percentage': round((t_mt / total_commodity_tonnes) * 100, 1)
         })
 
-    # Party-wise brokerage receivables
-    cur.execute("""
-        SELECT 
-            p.id, p.legal_name,
-            COALESCE(SUM(l.amount), 0) AS balance_due
-        FROM parties p
-        LEFT JOIN brokerage_ledger l ON p.id = l.party_id
-        GROUP BY p.id
-        HAVING balance_due != 0
-        ORDER BY balance_due DESC
-        LIMIT 8
-    """)
-    party_receivables = [{'party_id': r['id'], 'party_name': r['legal_name'], 'balance_due': r['balance_due']} for r in cur.fetchall()]
+    # Party-wise brokerage receivables (disabled per zero brokerage requirement)
+    party_receivables = []
 
     # Live Bargains Stream / Recent Deals Feed with Mandi Stations & Counterparties
     cur.execute("""
@@ -209,24 +198,14 @@ def create_new_deal(data: Dict[str, Any], actor_name: str = "Broker User", actor
     # Calculate quantities & brokerage
     qty_tonnes = float(convert_quintals_to_tonnes(qty_qtl))
     
-    # Check party default brokerage if not specified
-    cur.execute("SELECT default_buyer_brokerage_per_tonne, brokerage_enabled FROM parties WHERE id = ?", (buyer_id,))
-    b_row = cur.fetchone()
-    default_b_rate = b_row['default_buyer_brokerage_per_tonne'] if b_row and b_row['brokerage_enabled'] else 0.0
-
-    cur.execute("SELECT default_seller_brokerage_per_tonne, brokerage_enabled FROM parties WHERE id = ?", (seller_id,))
-    s_row = cur.fetchone()
-    default_s_rate = s_row['default_seller_brokerage_per_tonne'] if s_row and s_row['brokerage_enabled'] else 0.0
-
-    b_rate = float(data.get('buyer_brokerage_rate_per_tonne', default_b_rate))
-    s_rate = float(data.get('seller_brokerage_rate_per_tonne', default_s_rate))
-    is_overridden = 1 if (b_rate != default_b_rate or s_rate != default_s_rate) else 0
-    override_reason = data.get('brokerage_override_reason', '')
-
-    brok_calc = calculate_brokerage(qty_tonnes, b_rate, s_rate)
-    b_brok_amt = float(brok_calc['buyer_brokerage'])
-    s_brok_amt = float(brok_calc['seller_brokerage'])
-    tot_brok_amt = float(brok_calc['total_brokerage'])
+    # Brokerage calculations disabled completely per user requirement
+    b_rate = 0.0
+    s_rate = 0.0
+    is_overridden = 0
+    override_reason = ''
+    b_brok_amt = 0.0
+    s_brok_amt = 0.0
+    tot_brok_amt = 0.0
 
     advance_payment_date = data.get('advance_payment_date') or deal_date
     delivery_condition = data.get('delivery_condition') or f"Ex-Mill Lifting {deal_date} to {delivery_date}"
@@ -407,23 +386,15 @@ def resell_and_link_deal(data: Dict[str, Any], actor_name: str = "Broker User", 
 
     # Calculate Brokerage
     qty_tonnes = float(convert_quintals_to_tonnes(qty_qtl))
-    cur.execute("SELECT default_buyer_brokerage_per_tonne, brokerage_enabled FROM parties WHERE id = ?", (resale_buyer_id,))
-    b_row = cur.fetchone()
-    default_b_rate = b_row['default_buyer_brokerage_per_tonne'] if b_row and b_row['brokerage_enabled'] else 0.0
-
-    cur.execute("SELECT default_seller_brokerage_per_tonne, brokerage_enabled FROM parties WHERE id = ?", (instructing_seller_id,))
-    s_row = cur.fetchone()
-    default_s_rate = s_row['default_seller_brokerage_per_tonne'] if s_row and s_row['brokerage_enabled'] else 0.0
-
-    b_rate = float(data.get('buyer_brokerage_rate_per_tonne', default_b_rate))
-    s_rate = float(data.get('seller_brokerage_rate_per_tonne', default_s_rate))
-    is_overridden = 1 if (b_rate != default_b_rate or s_rate != default_s_rate) else 0
-    override_reason = data.get('brokerage_override_reason', '')
-
-    brok_calc = calculate_brokerage(qty_tonnes, b_rate, s_rate)
-    b_brok_amt = float(brok_calc['buyer_brokerage'])
-    s_brok_amt = float(brok_calc['seller_brokerage'])
-    tot_brok_amt = float(brok_calc['total_brokerage'])
+    
+    # Brokerage calculations disabled completely per user requirement
+    b_rate = 0.0
+    s_rate = 0.0
+    is_overridden = 0
+    override_reason = ''
+    b_brok_amt = 0.0
+    s_brok_amt = 0.0
+    tot_brok_amt = 0.0
 
     # Link Sequence & Deal ID
     import uuid
@@ -736,9 +707,8 @@ def get_party_profile(party_id: str, db_path: str = DB_PATH) -> Dict[str, Any]:
     """, (party_id, party_id))
     pending_deals = cur.fetchone()[0]
 
-    # Ledger Balance
-    cur.execute("SELECT COALESCE(SUM(amount), 0) FROM brokerage_ledger WHERE party_id = ?", (party_id,))
-    balance_due = float(cur.fetchone()[0])
+    # Brokerage calculations disabled
+    balance_due = 0.0
 
     # Recent Deals for this party
     cur.execute("""

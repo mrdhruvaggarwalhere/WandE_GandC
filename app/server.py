@@ -474,9 +474,9 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         bank_ifsc = ((data.get('bank_ifsc') if 'bank_ifsc' in data else existing_dict.get('bank_ifsc', '')) or '').strip().upper()
         bank_branch = data.get('bank_branch') if 'bank_branch' in data else existing_dict.get('bank_branch', '')
 
-        default_buyer = float(data.get('default_buyer_brokerage_per_tonne', existing_dict.get('default_buyer_brokerage_per_tonne', 50.0) or 50.0))
-        default_seller = float(data.get('default_seller_brokerage_per_tonne', existing_dict.get('default_seller_brokerage_per_tonne', 50.0) or 50.0))
-        brokerage_enabled = int(data.get('brokerage_enabled', existing_dict.get('brokerage_enabled', 1)))
+        default_buyer = float(data.get('default_buyer_brokerage_per_tonne', 0.0) or 0.0)
+        default_seller = float(data.get('default_seller_brokerage_per_tonne', 0.0) or 0.0)
+        brokerage_enabled = int(data.get('brokerage_enabled', 0))
         credit_limit = float(data.get('credit_limit', existing_dict.get('credit_limit', 0.0) or 0.0))
         notes = data.get('notes') if 'notes' in data else existing_dict.get('notes', '')
         busy_ledger_id = data.get('busy_ledger_id') if 'busy_ledger_id' in data else existing_dict.get('busy_ledger_id', '')
