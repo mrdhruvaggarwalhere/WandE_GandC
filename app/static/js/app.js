@@ -1010,6 +1010,7 @@ Mob. 94619-40113 / 94619-40114 / 94619-40115
     if (modal) modal.classList.add('active');
 
     if (window.lucide) lucide.createIcons();
+    this.checkWhatsAppBotStatus();
   },
 
   switchDispatchTab(tab) {
@@ -1127,6 +1128,154 @@ Phone: 94619-40113 / 94619-40114`
       window.open(waUrl, '_blank');
       this.showToast(`✓ PDF downloaded & WhatsApp opened for +${phoneDigits}`, 'success');
       this.logDispatchEvent('WHATSAPP');
+    }
+  },
+
+  waBotPollInterval: null,
+
+  async checkWhatsAppBotStatus() {
+    try {
+      const res = await fetch('/api/whatsapp/status');
+      const data = await res.json();
+      const dot = document.getElementById('wa-bot-status-dot');
+      const text = document.getElementById('wa-bot-status-text');
+      const linkBtn = document.getElementById('btn-wa-link-device');
+      const sendBtn = document.getElementById('btn-direct-send-wa');
+
+      if (data.is_ready) {
+        if (dot) { dot.style.background = '#10B981'; dot.style.boxShadow = '0 0 8px rgba(16,185,129,0.7)'; }
+        if (text) { text.textContent = '✓ WhatsApp Connected (Auto-Send Ready)'; text.style.color = '#10B981'; }
+        if (linkBtn) { linkBtn.textContent = 'Linked ✓'; linkBtn.style.opacity = '0.7'; }
+        if (sendBtn) {
+          sendBtn.style.opacity = '1';
+          sendBtn.disabled = false;
+        }
+      } else {
+        if (dot) { dot.style.background = '#F59E0B'; dot.style.boxShadow = 'none'; }
+        if (text) { text.textContent = 'WhatsApp Not Linked (Click to link)'; text.style.color = 'var(--text-muted)'; }
+        if (linkBtn) { linkBtn.textContent = 'Link WhatsApp'; linkBtn.style.opacity = '1'; }
+      }
+      return data;
+    } catch (e) {
+      console.warn('Failed to fetch WhatsApp bot status:', e);
+    }
+  },
+
+  async openWhatsAppQrModal() {
+    const modal = document.getElementById('modal-whatsapp-qr');
+    if (modal) modal.classList.add('active');
+
+    const spinner = document.getElementById('wa-qr-spinner');
+    const img = document.getElementById('wa-qr-img');
+    const label = document.getElementById('wa-qr-status-label');
+
+    if (spinner) { spinner.style.display = 'block'; spinner.textContent = 'Starting WhatsApp Session...'; }
+    if (img) img.style.display = 'none';
+    if (label) label.textContent = 'Initializing WhatsApp...';
+
+    // Start bot background session
+    fetch('/api/whatsapp/start', { method: 'POST' }).catch(() => {});
+
+    // Poll status every 1.5s
+    if (this.waBotPollInterval) clearInterval(this.waBotPollInterval);
+    this.waBotPollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/whatsapp/status');
+        const data = await res.json();
+
+        if (data.is_ready) {
+          clearInterval(this.waBotPollInterval);
+          this.waBotPollInterval = null;
+          this.closeWhatsAppQrModal();
+          this.showToast('✓ WhatsApp Linked Successfully! Ready for direct PDF dispatch.', 'success', 5000);
+          this.checkWhatsAppBotStatus();
+          return;
+        }
+
+        if (data.qr_code) {
+          if (spinner) spinner.style.display = 'none';
+          if (img) {
+            img.src = data.qr_code;
+            img.style.display = 'block';
+          }
+          if (label) label.textContent = 'Scan QR code with WhatsApp on your phone';
+        } else if (data.status === 'STARTING') {
+          if (label) label.textContent = 'Starting browser session...';
+        } else if (data.status === 'CONNECTING') {
+          if (label) label.textContent = 'Connecting to WhatsApp...';
+        }
+      } catch (err) {
+        console.warn('Poll error:', err);
+      }
+    }, 1500);
+  },
+
+  closeWhatsAppQrModal() {
+    if (this.waBotPollInterval) {
+      clearInterval(this.waBotPollInterval);
+      this.waBotPollInterval = null;
+    }
+    const modal = document.getElementById('modal-whatsapp-qr');
+    if (modal) modal.classList.remove('active');
+  },
+
+  async sendPdfDirectlyToWhatsApp() {
+    const deal = this.selectedDealForDispatch;
+    if (!deal) return;
+
+    const phoneInput = document.getElementById('dispatch-phone')?.value || deal.buyer_phone || '';
+    const phoneDigits = phoneInput.replace(/[^0-9]/g, '');
+    const waText = document.getElementById('whatsapp-preview-box')?.textContent || '';
+
+    if (!phoneDigits) {
+      this.showToast('Please enter a valid phone number', 'warning');
+      return;
+    }
+
+    // Check status
+    const status = await this.checkWhatsAppBotStatus();
+    if (!status || !status.is_ready) {
+      this.openWhatsAppQrModal();
+      return;
+    }
+
+    const sendBtn = document.getElementById('btn-direct-send-wa');
+    const origHtml = sendBtn ? sendBtn.innerHTML : '';
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<span class="spinner-sm" style="display: inline-block; width: 14px; height: 14px; border: 2px solid #000; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> <span>Sending PDF...</span>';
+    }
+
+    try {
+      const resp = await fetch('/api/whatsapp/send-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deal_id: deal.id,
+          phone: phoneDigits,
+          caption: waText
+        })
+      });
+      const result = await resp.json();
+
+      if (result.success) {
+        this.showToast(`✓ PDF Contract delivered directly to +${phoneDigits} on WhatsApp!`, 'success', 5000);
+        document.getElementById('modal-dispatch')?.classList.remove('active');
+        this.logDispatchEvent('WHATSAPP_AUTO', phoneDigits);
+      } else {
+        if (result.status === 'GATEWAY_NOT_CONFIGURED' || result.status === 'NEEDS_QR') {
+          this.openWhatsAppQrModal();
+        } else {
+          this.showToast(`WhatsApp Send Error: ${result.error || result.message || 'Failed to send'}`, 'danger', 6000);
+        }
+      }
+    } catch (err) {
+      this.showToast(`Connection error: ${err.message}`, 'danger');
+    } finally {
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = origHtml;
+      }
     }
   },
 
@@ -2000,32 +2149,38 @@ Phone: 94619-40113 / 94619-40114`
       this.logDispatchEvent('WHATSAPP');
     });
 
+    // WhatsApp direct bot send and linking
+    document.getElementById('btn-direct-send-wa')?.addEventListener('click', () => {
+      this.sendPdfDirectlyToWhatsApp();
+    });
+
+    document.getElementById('btn-wa-link-device')?.addEventListener('click', () => {
+      this.openWhatsAppQrModal();
+    });
+
+    document.getElementById('btn-close-wa-qr')?.addEventListener('click', () => {
+      this.closeWhatsAppQrModal();
+    });
+
+    document.getElementById('btn-cancel-wa-qr')?.addEventListener('click', () => {
+      this.closeWhatsAppQrModal();
+    });
+
     document.getElementById('btn-open-whatsapp-web')?.addEventListener('click', (e) => {
       e.preventDefault();
       const deal = this.selectedDealForDispatch;
       if (!deal) return;
-      const bgn = deal.bgn_code || deal.id;
-      const filename = `Bargain_Confirmation_${bgn}.pdf`;
       const phoneInput = document.getElementById('dispatch-phone')?.value || deal.buyer_phone || '';
       const phoneDigits = phoneInput.replace(/[^0-9]/g, '');
       const waText = document.getElementById('whatsapp-preview-box')?.textContent || '';
 
-      // Instant download of official PDF from fast backend endpoint
-      const link = document.createElement('a');
-      link.href = `/api/deals/${deal.id}/pdf`;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Open WhatsApp Web
+      // Open WhatsApp Web with prefilled message (no annoying local file download)
       if (phoneDigits) {
         const waUrl = `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${encodeURIComponent(waText)}`;
         window.open(waUrl, '_blank');
+        this.showToast(`Opened WhatsApp chat for +${phoneDigits}`, 'success');
+        this.logDispatchEvent('WHATSAPP', phoneInput);
       }
-
-      this.showToast(`✓ Official PDF downloaded & WhatsApp opened for +${phoneDigits}`, 'success');
-      this.logDispatchEvent('WHATSAPP', phoneInput);
     });
 
     // Email tab actions

@@ -228,6 +228,17 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(pdf_data)
                 return
 
+            elif path == '/api/whatsapp/status':
+                conn.close()
+                from app.services.whatsapp_bot import whatsapp_bot
+                return self.send_json_response(whatsapp_bot.get_status())
+
+            elif path == '/api/whatsapp/start':
+                conn.close()
+                from app.services.whatsapp_bot import whatsapp_bot
+                whatsapp_bot.start()
+                return self.send_json_response(whatsapp_bot.get_status())
+
             elif path == '/api/whatsapp/config':
                 conn.close()
                 from app.core.whatsapp_gateway import get_whatsapp_config
@@ -386,6 +397,11 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 instruction_id = path.split('/')[-1]
                 payload = generate_busy_xml_voucher(instruction_id)
                 return self.send_json_response(payload)
+
+            elif path == '/api/whatsapp/start':
+                from app.services.whatsapp_bot import whatsapp_bot
+                whatsapp_bot.start()
+                return self.send_json_response(whatsapp_bot.get_status())
 
             elif path == '/api/whatsapp/config':
                 from app.core.whatsapp_gateway import save_whatsapp_config

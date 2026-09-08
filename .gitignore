@@ -28,3 +28,7 @@ htmlcov/
 .idea/
 *.swp
 *.swo
+
+# Local WhatsApp Session & Scratch
+data/whatsapp_session/
+scratch/

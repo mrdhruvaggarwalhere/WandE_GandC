@@ -808,6 +808,16 @@
             </button>
           </div>
 
+          <div style="background: rgba(37, 211, 102, 0.08); border: 1px solid rgba(37, 211, 102, 0.2); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="wa-bot-status-dot" style="width: 10px; height: 10px; border-radius: 50%; background: #94A3B8; display: inline-block;"></span>
+              <span id="wa-bot-status-text" style="font-size: 12px; font-weight: 600; color: var(--text);">Checking WhatsApp connection...</span>
+            </div>
+            <button type="button" class="btn btn-xs" id="btn-wa-link-device" style="background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); font-weight: 600;">
+              Link WhatsApp
+            </button>
+          </div>
+
           <div class="form-group">
             <label class="form-label">Recipient Phone Number (International format)</label>
             <input type="text" class="form-input mono" id="dispatch-phone" placeholder="+91 94140 51234">
@@ -819,19 +829,19 @@
             </div>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <button class="btn btn-secondary btn-sm" id="btn-native-share-wa" style="display: inline-flex; align-items: center; gap: 6px;">
-              <i data-lucide="share-2" style="width: 14px; height: 14px; color: #25D366;"></i>
-              <span>Share PDF Document</span>
+            <button class="btn btn-secondary btn-sm" id="btn-copy-whatsapp">
+              <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+              <span>Copy Text</span>
             </button>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button class="btn btn-secondary btn-sm" id="btn-copy-whatsapp">
-                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
-                <span>Copy Text</span>
-              </button>
-              <a class="btn btn-sm" id="btn-open-whatsapp-web" target="_blank" rel="noopener noreferrer" style="background: #25D366; color: #0B0F19; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+              <a class="btn btn-secondary btn-sm" id="btn-open-whatsapp-web" target="_blank" rel="noopener noreferrer">
                 <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
                 <span>Open in WhatsApp</span>
               </a>
+              <button class="btn btn-primary btn-sm" id="btn-direct-send-wa" style="background: #25D366; color: #0B0F19; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+                <span>Send PDF to WhatsApp</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1213,10 +1223,49 @@
         <!-- Injected via JS -->
       </div>
     </div>
-  <!-- =========================================================================
-       MODAL 6: WHATSAPP GATEWAY ₹0 FREE SETUP
-       ========================================================================= -->
+  </div>
 
+  <!-- =========================================================================
+       MODAL: WHATSAPP BOT QR PAIRING
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-whatsapp-qr">
+    <div class="modal-card" style="max-width: 440px; text-align: center;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="smartphone" style="width: 20px; height: 20px; color: #25D366;"></i>
+          <h3>Link WhatsApp on Phone</h3>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-close-wa-qr">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 20px;">
+        <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-align: left; width: 100%;">
+          <strong>How to link in 5 seconds:</strong>
+          <ol style="margin: 6px 0 0 18px; padding: 0;">
+            <li>Open WhatsApp on your mobile phone</li>
+            <li>Go to <strong>Settings</strong> &rarr; <strong>Linked Devices</strong></li>
+            <li>Tap <strong>Link a Device</strong> and point your camera at this QR code:</li>
+          </ol>
+        </div>
+
+        <div id="wa-qr-container" style="background: #FFFFFF; padding: 12px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.2); width: 220px; height: 220px; display: flex; align-items: center; justify-content: center; position: relative;">
+          <div id="wa-qr-spinner" style="font-size: 12px; color: #64748B; font-weight: 500;">
+            Generating QR Code...
+          </div>
+          <img id="wa-qr-img" src="" alt="WhatsApp QR" style="width: 100%; height: 100%; object-fit: contain; display: none;">
+        </div>
+
+        <div id="wa-qr-status" style="font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 6px;">
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #F59E0B;"></span>
+          <span id="wa-qr-status-label">Waiting for scan...</span>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button type="button" class="btn btn-ghost" id="btn-cancel-wa-qr">Close</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Notification Stack -->
   <div class="toast-container" id="toast-container"></div>

@@ -99,11 +99,43 @@ def send_whatsapp_pdf_document(
     if len(clean_phone) == 10:
         clean_phone = f"91{clean_phone}" # Default to India country code for 10-digit mandi mobile numbers
 
+    # 0. Check Local Background WhatsApp Bot Session
+    try:
+        from app.services.whatsapp_bot import whatsapp_bot
+        bot_status = whatsapp_bot.get_status()
+        if bot_status.get('is_ready'):
+            from pathlib import Path
+            temp_dir = Path(__file__).resolve().parent.parent.parent / "data" / "temp_dispatch"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            temp_pdf = temp_dir / filename
+            with open(temp_pdf, 'wb') as f:
+                f.write(pdf_bytes)
+
+            res = whatsapp_bot.send_pdf(clean_phone, caption, str(temp_pdf), filename)
+            if res.get('success'):
+                return {
+                    'success': True,
+                    'status': 'SENT',
+                    'provider': 'LOCAL_WHATSAPP_BOT',
+                    'phone': clean_phone,
+                    'filename': filename,
+                    'detail': res.get('detail', 'PDF document delivered directly to WhatsApp')
+                }
+            else:
+                return {
+                    'success': False,
+                    'status': 'BOT_SEND_FAILED',
+                    'error': res.get('error'),
+                    'phone': clean_phone
+                }
+    except Exception as bot_err:
+        logger.warning(f"Local WhatsApp Bot check failed: {bot_err}")
+
     if not cfg.get('is_enabled') or not cfg.get('instance_id') or not cfg.get('api_token'):
         return {
             'success': False,
             'status': 'GATEWAY_NOT_CONFIGURED',
-            'message': 'WhatsApp Gateway is not yet connected with API credentials. Please set up your free Green API or Cloud API instance in WhatsApp Settings.',
+            'message': 'WhatsApp is not linked. Please click "Link WhatsApp" to scan the QR code once.',
             'phone': clean_phone,
             'filename': filename
         }
