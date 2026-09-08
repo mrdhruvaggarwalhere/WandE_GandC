@@ -30,5 +30,5 @@ htmlcov/
 *.swo
 
 # Local WhatsApp Session & Scratch
-data/whatsapp_session/
+data/
 scratch/
