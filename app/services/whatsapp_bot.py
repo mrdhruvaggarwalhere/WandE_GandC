@@ -213,92 +213,102 @@ class WhatsAppBot:
 
         time.sleep(1)
 
-        print(f"[WhatsAppBot] Finding file inputs on WhatsApp Web...")
-        file_inputs = self._page.query_selector_all("input[type='file']")
-        print(f"[WhatsAppBot] Found {len(file_inputs)} file inputs prior to clicking attach.")
-
-        # 1. Click attach button to reveal inputs if needed
+        # 1. Click attach button to reveal the menu
         attach_btn = self._page.query_selector("span[data-icon='plus'], span[data-icon='attach-menu-plus'], button[aria-label*='Attach']")
         if attach_btn:
             try:
                 attach_btn.click()
                 time.sleep(1)
-                file_inputs = self._page.query_selector_all("input[type='file']")
-                print(f"[WhatsAppBot] Found {len(file_inputs)} file inputs after clicking attach.")
             except Exception as e:
-                print(f"[WhatsAppBot] Attach click error: {e}")
+                print(f"[WhatsAppBot] Attach click error: {e}", flush=True)
 
-        target_input = None
-        for idx, inp in enumerate(file_inputs):
-            accept = inp.get_attribute("accept") or ""
-            print(f"[WhatsAppBot] Input #{idx}: accept='{accept}'")
-            # Document input typically accepts "*", "*/*", or has no restriction, or contains pdf
-            if accept in ("*", "*/*") or "pdf" in accept or "document" in accept:
-                target_input = inp
-                break
+        # 2. Click the 'Document' option via expect_file_chooser (or upload directly to document input)
+        doc_item = self._page.query_selector("div[role='button']:has-text('Document'), li:has-text('Document'), button:has-text('Document'), [aria-label*='Document']")
+        uploaded = False
 
-        if not target_input and file_inputs:
-            # Prefer input that does NOT restrict to image/video
+        if doc_item:
+            print("[WhatsAppBot] Found 'Document' menu option. Uploading PDF via file chooser...", flush=True)
+            try:
+                with self._page.expect_file_chooser(timeout=8000) as fc_info:
+                    doc_item.click()
+                fc = fc_info.value
+                fc.set_files(pdf_path)
+                uploaded = True
+                print(f"[WhatsAppBot] File chooser set files successfully: {pdf_path}", flush=True)
+            except Exception as fc_err:
+                print(f"[WhatsAppBot] expect_file_chooser fallback: {fc_err}", flush=True)
+                doc_inp = doc_item.query_selector("input[type='file']")
+                if doc_inp:
+                    doc_inp.set_input_files(pdf_path)
+                    uploaded = True
+
+        if not uploaded:
+            # Fallback: Query all inputs, pick the one that accepts documents or all files (NOT image-only)
+            file_inputs = self._page.query_selector_all("input[type='file']")
+            target_input = None
             for inp in file_inputs:
                 accept = inp.get_attribute("accept") or ""
                 if "image" not in accept:
                     target_input = inp
                     break
-            if not target_input:
-                target_input = file_inputs[-1]  # In many WA versions, document is the last input
+            if not target_input and file_inputs:
+                target_input = file_inputs[0]
+            if target_input:
+                target_input.set_input_files(pdf_path)
+                uploaded = True
 
-        if not target_input:
+        if not uploaded:
             self._page.screenshot(path="scratch/no_input_found.png")
-            return {"success": False, "error": "Could not find WhatsApp document upload element."}
+            return {"success": False, "error": "Could not locate WhatsApp Document attachment element."}
 
-        print(f"[WhatsAppBot] Uploading PDF file '{pdf_path}' to target input...")
-        target_input.set_input_files(pdf_path)
-
-        # 3. Wait for attachment preview screen
+        # 3. Wait for the Document Preview screen to render
         time.sleep(3)
-        self._page.screenshot(path="scratch/preview_attempt.png")
+        self._page.screenshot(path="scratch/step1_preview.png")
 
-        send_btn_selectors = [
-            "span[data-icon='send']",
-            "span[data-icon='wds-ic-send-filled']",
-            "div[aria-label='Send']",
-            "button[aria-label='Send']",
-            "[data-testid='send']",
-            "div[role='button'][aria-label='Send']",
-            "span[data-icon='send-light']",
-            "button:has(span[data-icon*='send'])"
-        ]
+        # 4. Click the green Send button on the document preview screen
+        print("[WhatsAppBot] Clicking green Send button on attachment preview...", flush=True)
+        clicked = self._page.evaluate("""() => {
+            // Find the green circular send button on the attachment preview screen
+            const sendIcons = Array.from(document.querySelectorAll('span[data-icon="send"], span[data-icon="wds-ic-send-filled"], span[data-icon="send-light"]'));
+            if (sendIcons.length > 0) {
+                const lastIcon = sendIcons[sendIcons.length - 1];
+                const btn = lastIcon.closest('div[role="button"], button') || lastIcon;
+                btn.click();
+                return true;
+            }
+            const sendBtns = Array.from(document.querySelectorAll('div[role="button"][aria-label="Send"], button[aria-label="Send"]'));
+            if (sendBtns.length > 0) {
+                sendBtns[sendBtns.length - 1].click();
+                return true;
+            }
+            return false;
+        }""")
+        print(f"[WhatsAppBot] Send button clicked via evaluate: {clicked}", flush=True)
 
-        send_btn = None
-        for _ in range(10):
-            for sel in send_btn_selectors:
-                send_btn = self._page.query_selector(sel)
-                if send_btn:
-                    print(f"[WhatsAppBot] Found send button with selector: {sel}")
-                    break
-            if send_btn:
-                break
-            time.sleep(1)
-
-        # Type optional short caption if caption input exists
-        caption_input = self._page.query_selector("div[contenteditable='true'][data-tab='10'], div[aria-placeholder*='Add a caption'], div[aria-label*='Add a caption']")
-        if caption_input:
-            try:
-                caption_input.fill(f"Official Contract: {filename} • System Generated")
-                time.sleep(0.5)
-            except Exception:
-                pass
-
-        if send_btn:
-            print("[WhatsAppBot] Clicking send button in attachment preview...")
-            send_btn.click()
-        else:
-            print("[WhatsAppBot] Send button not matched by selector, pressing keyboard Enter to send...")
+        if not clicked:
+            print("[WhatsAppBot] Send button not matched, pressing Enter...", flush=True)
             self._page.keyboard.press("Enter")
 
-        time.sleep(3)
+        # 5. Wait for the document preview to close (meaning the PDF was actually sent)
+        preview_closed = False
+        for _ in range(15):
+            time.sleep(1)
+            # Check if preview is closed (the green send button on the preview disappears)
+            preview_elem = self._page.query_selector("div:has-text('1 page'), div[aria-label='Document preview']")
+            if not preview_elem:
+                preview_closed = True
+                print("[WhatsAppBot] Document preview closed! PDF attachment has been dispatched.", flush=True)
+                break
+            else:
+                self._page.evaluate("""() => {
+                    const btns = Array.from(document.querySelectorAll('div[role="button"], button')).filter(b => b.querySelector('span[data-icon*="send"]'));
+                    if (btns.length > 0) btns[btns.length - 1].click();
+                }""")
 
-        # 4. Also send formatted text details as a follow-up message in chat
+        time.sleep(2)
+        self._page.screenshot(path="scratch/after_pdf_sent.png")
+
+        # 5. Also send formatted text details as a follow-up message in chat
         if message:
             try:
                 composer = self._page.query_selector("footer div[contenteditable='true']")

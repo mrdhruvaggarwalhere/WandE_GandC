@@ -1263,7 +1263,7 @@ Phone: 94619-40113 / 94619-40114`
       if (resp.ok && result.success) {
         this.showToast(`✓ PDF Contract delivered directly to +${phoneDigits} on WhatsApp!`, 'success', 5000);
         document.getElementById('modal-dispatch')?.classList.remove('active');
-        this.logDispatchEvent('WHATSAPP_AUTO', phoneDigits);
+        this.logDispatchEvent('WHATSAPP', phoneDigits);
       } else {
         if (result.status === 'GATEWAY_NOT_CONFIGURED' || result.status === 'NEEDS_QR') {
           this.openWhatsAppQrModal();
