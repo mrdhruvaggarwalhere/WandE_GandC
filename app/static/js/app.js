@@ -1308,6 +1308,217 @@ Phone: 94619-40113 / 94619-40114`
     this.showToast(`Opened email client with system-generated PDF notice`, 'info');
   },
 
+  // ==========================================================================
+  // REDIFFMAIL SMTP CONFIGURATION & DIRECT EMAIL DISPATCH
+  // ==========================================================================
+  async openRediffmailModal() {
+    const modal = document.getElementById('modal-rediffmail-config');
+    if (!modal) return;
+
+    // Reset feedback
+    const feedback = document.getElementById('email-test-feedback');
+    if (feedback) {
+      feedback.style.display = 'none';
+      feedback.textContent = '';
+    }
+
+    try {
+      const cfg = await this.api('/api/email/config');
+      if (cfg) {
+        const userInput = document.getElementById('cfg-email-user');
+        const passInput = document.getElementById('cfg-email-pass');
+        const fromInput = document.getElementById('cfg-email-from-name');
+        const hostInput = document.getElementById('cfg-email-host');
+        const portInput = document.getElementById('cfg-email-port');
+        const enabledInput = document.getElementById('cfg-email-enabled');
+        const presetSelect = document.getElementById('cfg-email-preset');
+
+        if (userInput) userInput.value = cfg.smtp_user || 'ganeshsgnr@rediffmail.com';
+        if (passInput) {
+          passInput.value = cfg.has_password ? cfg.smtp_pass : '';
+          passInput.placeholder = cfg.has_password ? '•••••••• (Saved - leave empty to keep)' : 'Enter your Rediffmail password';
+          passInput.required = !cfg.has_password;
+        }
+        if (fromInput) fromInput.value = cfg.from_name || 'Ganesh & Company';
+        if (hostInput) hostInput.value = cfg.smtp_host || 'smtp.rediffmail.com';
+        if (portInput) portInput.value = cfg.smtp_port || 587;
+        if (enabledInput) enabledInput.checked = !!cfg.is_enabled;
+
+        // Sync preset
+        if (presetSelect) {
+          if (cfg.smtp_host === 'smtp.rediffmail.com' && Number(cfg.smtp_port) === 587) {
+            presetSelect.value = 'standard';
+          } else if (cfg.smtp_host === 'mail.rediffmailpro.com' && (Number(cfg.smtp_port) === 465 || Number(cfg.smtp_port) === 587)) {
+            presetSelect.value = 'pro';
+          } else {
+            presetSelect.value = 'custom';
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load email config:', err);
+    }
+
+    modal.classList.add('active');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeRediffmailModal() {
+    const modal = document.getElementById('modal-rediffmail-config');
+    if (modal) modal.classList.remove('active');
+  },
+
+  async saveRediffmailConfig(e) {
+    if (e) e.preventDefault();
+    const userInput = document.getElementById('cfg-email-user')?.value?.trim();
+    const passInput = document.getElementById('cfg-email-pass')?.value;
+    const fromInput = document.getElementById('cfg-email-from-name')?.value?.trim();
+    const hostInput = document.getElementById('cfg-email-host')?.value?.trim();
+    const portInput = document.getElementById('cfg-email-port')?.value;
+    const enabledInput = document.getElementById('cfg-email-enabled')?.checked;
+    const presetSelect = document.getElementById('cfg-email-preset')?.value;
+
+    const useSsl = presetSelect === 'pro' || Number(portInput) === 465;
+
+    try {
+      const payload = {
+        smtp_user: userInput,
+        from_email: userInput,
+        from_name: fromInput || 'Ganesh & Company',
+        smtp_host: hostInput,
+        smtp_port: parseInt(portInput || '587', 10),
+        use_ssl: useSsl,
+        is_enabled: enabledInput ? 1 : 0
+      };
+      if (passInput && passInput !== '••••••••') {
+        payload.smtp_pass = passInput;
+      }
+
+      await this.api('/api/email/config', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      this.showToast('✓ Rediffmail SMTP configuration saved successfully!', 'success', 5000);
+      this.closeRediffmailModal();
+    } catch (err) {
+      this.showToast(`Failed to save settings: ${err.message}`, 'danger');
+    }
+  },
+
+  async testRediffmailConnection() {
+    const testBtn = document.getElementById('btn-test-rediffmail-connection');
+    const feedback = document.getElementById('email-test-feedback');
+    const user = document.getElementById('cfg-email-user')?.value?.trim() || 'ganeshsgnr@rediffmail.com';
+
+    if (testBtn) {
+      testBtn.disabled = true;
+      testBtn.innerHTML = `<span class="spinner-sm" style="display:inline-block; width:12px; height:12px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin 0.6s linear infinite; vertical-align:middle; margin-right:6px;"></span> Connecting...`;
+    }
+
+    if (feedback) {
+      feedback.style.display = 'block';
+      feedback.style.background = 'rgba(59, 130, 246, 0.1)';
+      feedback.style.color = '#3b82f6';
+      feedback.style.border = '1px solid rgba(59, 130, 246, 0.3)';
+      feedback.textContent = `Connecting to Rediffmail SMTP and sending test email to ${user}...`;
+    }
+
+    try {
+      // If password field has new value, save config first
+      const passVal = document.getElementById('cfg-email-pass')?.value;
+      if (passVal && passVal !== '••••••••') {
+        await this.saveRediffmailConfig();
+      }
+
+      const resp = await fetch('/api/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient: user })
+      });
+      const data = await resp.json();
+
+      if (resp.ok && data.success) {
+        if (feedback) {
+          feedback.style.background = 'rgba(16, 185, 129, 0.15)';
+          feedback.style.color = '#10b981';
+          feedback.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+          feedback.textContent = `✓ Rediffmail SMTP Connected! Verification email delivered to ${user}.`;
+        }
+        this.showToast(`✓ Rediffmail test email sent successfully to ${user}!`, 'success', 6000);
+      } else {
+        const errorMsg = data.error || data.message || 'SMTP Authentication failed';
+        if (feedback) {
+          feedback.style.background = 'rgba(239, 68, 68, 0.15)';
+          feedback.style.color = '#ef4444';
+          feedback.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+          feedback.textContent = `✗ Connection failed: ${errorMsg}`;
+        }
+        this.showToast(`Rediffmail Test Failed: ${errorMsg}`, 'danger', 7000);
+      }
+    } catch (err) {
+      if (feedback) {
+        feedback.style.background = 'rgba(239, 68, 68, 0.15)';
+        feedback.style.color = '#ef4444';
+        feedback.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        feedback.textContent = `✗ Network error: ${err.message}`;
+      }
+      this.showToast(`Error: ${err.message}`, 'danger');
+    } finally {
+      if (testBtn) {
+        testBtn.disabled = false;
+        testBtn.innerHTML = `<i data-lucide="send" style="width: 14px; height: 14px;"></i> <span>Test Connection</span>`;
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+  },
+
+  async sendContractViaRediffmail() {
+    const deal = this.selectedDealForDispatch;
+    if (!deal) return;
+
+    const emailTo = document.getElementById('dispatch-email-to')?.value?.trim() || deal.buyer_email || deal.seller_email || '';
+    const subject = document.getElementById('dispatch-email-subject')?.value || `Bargain Confirmation [${deal.bgn_code || deal.id}]`;
+    const emailBodyText = document.getElementById('email-preview-box')?.innerText || '';
+
+    if (!emailTo || !emailTo.includes('@')) {
+      this.showToast('Please specify a valid recipient email address', 'warning');
+      return;
+    }
+
+    // Immediate non-blocking notification: user does not wait
+    this.showToast(`📨 Sending official PDF contract from ganeshsgnr@rediffmail.com to ${emailTo}...`, 'info', 6000);
+    document.getElementById('modal-dispatch')?.classList.remove('active');
+
+    try {
+      const resp = await fetch('/api/email/send-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deal_id: deal.id,
+          recipient_email: emailTo,
+          recipient_name: deal.buyer_name || 'Client',
+          subject: subject,
+          body: emailBodyText
+        })
+      });
+
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        this.showToast(`✓ Official PDF Contract successfully sent to ${emailTo} via Rediffmail!`, 'success', 7000);
+        await this.logDispatchEvent('EMAIL', emailTo, true);
+      } else {
+        const err = data.error || 'Failed to send email via Rediffmail';
+        this.showToast(`Rediffmail Send Failed: ${err}`, 'danger', 8000);
+        if (err.toLowerCase().includes('password') || err.toLowerCase().includes('auth') || err.toLowerCase().includes('not configured')) {
+          this.openRediffmailModal();
+        }
+      }
+    } catch (err) {
+      this.showToast(`Email Error: ${err.message}`, 'danger', 6000);
+    }
+  },
+
   async logDispatchEvent(channel, recipientVal = null, silent = false) {
     if (!this.selectedDealForDispatch) return;
     const deal = this.selectedDealForDispatch;
@@ -2075,6 +2286,12 @@ Phone: 94619-40113 / 94619-40114`
           <span>View All Bargain Contracts</span>
         </div>
       </div>
+      <div class="command-item" onclick="app.closeCommandPalette(); app.openRediffmailModal();">
+        <div class="command-item-left">
+          <i data-lucide="mail" style="width: 14px; height: 14px; color: #ef4444;"></i>
+          <span>Configure Rediffmail SMTP (ganeshsgnr@rediffmail.com)</span>
+        </div>
+      </div>
       <div class="command-item" onclick="app.closeCommandPalette(); app.navigate('parties');">
         <div class="command-item-left">
           <i data-lucide="building-2" style="width: 14px; height: 14px;"></i>
@@ -2209,6 +2426,57 @@ Phone: 94619-40113 / 94619-40114`
     document.getElementById('btn-log-email-sent')?.addEventListener('click', () => {
       this.logDispatchEvent('EMAIL');
       document.getElementById('modal-dispatch')?.classList.remove('active');
+    });
+
+    // 1-Click Direct Send via Rediffmail (PDF attached)
+    document.getElementById('btn-send-rediffmail-direct')?.addEventListener('click', () => {
+      this.sendContractViaRediffmail();
+    });
+
+    // Rediffmail configuration modal triggers
+    document.getElementById('btn-topbar-rediffmail')?.addEventListener('click', () => {
+      this.openRediffmailModal();
+    });
+    document.getElementById('btn-open-rediffmail-config')?.addEventListener('click', () => {
+      this.openRediffmailModal();
+    });
+    document.getElementById('btn-close-rediffmail-modal')?.addEventListener('click', () => {
+      this.closeRediffmailModal();
+    });
+    document.getElementById('btn-cancel-rediffmail-config')?.addEventListener('click', () => {
+      this.closeRediffmailModal();
+    });
+
+    // Rediffmail configuration form submit
+    document.getElementById('form-rediffmail-config')?.addEventListener('submit', (e) => {
+      this.saveRediffmailConfig(e);
+    });
+
+    // Test connection button
+    document.getElementById('btn-test-rediffmail-connection')?.addEventListener('click', () => {
+      this.testRediffmailConnection();
+    });
+
+    // Toggle password visibility in setup modal
+    document.getElementById('btn-toggle-email-pass')?.addEventListener('click', () => {
+      const passInput = document.getElementById('cfg-email-pass');
+      if (passInput) {
+        passInput.type = passInput.type === 'password' ? 'text' : 'password';
+      }
+    });
+
+    // Preset selection change (Standard vs Pro vs Custom)
+    document.getElementById('cfg-email-preset')?.addEventListener('change', (e) => {
+      const preset = e.target.value;
+      const hostInput = document.getElementById('cfg-email-host');
+      const portInput = document.getElementById('cfg-email-port');
+      if (preset === 'standard') {
+        if (hostInput) hostInput.value = 'smtp.rediffmail.com';
+        if (portInput) portInput.value = '587';
+      } else if (preset === 'pro') {
+        if (hostInput) hostInput.value = 'mail.rediffmailpro.com';
+        if (portInput) portInput.value = '465';
+      }
     });
 
     // Party Profile modal

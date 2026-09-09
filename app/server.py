@@ -280,6 +280,11 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     'has_token': bool(token)
                 })
 
+            elif path == '/api/email/config':
+                conn.close()
+                from app.core.email_gateway import get_email_config
+                return self.send_json_response(get_email_config(mask_password=True))
+
             elif path.startswith('/api/deal-chains/'):
                 chain_id = path.split('/')[-1]
                 conn.close()
@@ -491,6 +496,62 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         print(f"Dispatch log error: {log_err}")
 
                 return self.send_json_response(send_res)
+
+            elif path == '/api/email/config':
+                from app.core.email_gateway import save_email_config
+                cfg = save_email_config(body)
+                return self.send_json_response(cfg)
+
+            elif path == '/api/email/test':
+                recipient = body.get('recipient') or body.get('email') or 'ganeshsgnr@rediffmail.com'
+                from app.core.email_gateway import test_rediffmail_connection
+                res = test_rediffmail_connection(recipient)
+                status_code = 200 if res.get('success') else 400
+                return self.send_json_response(res, status_code)
+
+            elif path == '/api/email/send-document':
+                deal_id = body.get('deal_id')
+                recipient_email = body.get('recipient_email', '')
+                recipient_name = body.get('recipient_name', '')
+                subject = body.get('subject')
+                body_text = body.get('body')
+
+                if not deal_id or not recipient_email:
+                    return self.send_error_json("deal_id and recipient_email are required", 400)
+
+                conn = get_db_connection()
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT 
+                        d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,
+                        b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station,
+                        b.email AS buyer_email,
+                        s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
+                        s.email AS seller_email,
+                        p.name AS product_name
+                    FROM deals d
+                    JOIN parties b ON d.buyer_id = b.id
+                    JOIN parties s ON d.seller_id = s.id
+                    JOIN products p ON d.product_id = p.id
+                    WHERE d.id = ? OR d.bgn_code = ?
+                """, (deal_id, deal_id))
+                d_row = cur.fetchone()
+                conn.close()
+
+                if not d_row:
+                    return self.send_error_json("Deal not found", 404)
+
+                deal_dict = dict(d_row)
+                from app.core.email_gateway import send_deal_contract_email
+                send_res = send_deal_contract_email(
+                    deal_dict=deal_dict,
+                    recipient_email=recipient_email,
+                    recipient_name=recipient_name,
+                    custom_subject=subject,
+                    custom_body=body_text
+                )
+                status_code = 200 if send_res.get('success') else 400
+                return self.send_json_response(send_res, status_code)
 
             elif path == '/api/test/run-worked-example':
                 test_results = self.execute_worked_example_acceptance_test()

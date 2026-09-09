@@ -162,6 +162,12 @@
         </div>
 
         <div class="topbar-right">
+          <!-- Rediffmail Quick Config Button -->
+          <button class="btn btn-secondary btn-sm" id="btn-topbar-rediffmail" title="Configure Rediffmail (ganeshsgnr@rediffmail.com)" style="display: inline-flex; align-items: center; gap: 6px; border-color: rgba(220, 38, 38, 0.35); color: #fca5a5; padding: 6px 10px;">
+            <i data-lucide="mail" style="width: 14px; height: 14px; color: #ef4444;"></i>
+            <span style="font-size: 12px; font-weight: 600;">Rediffmail</span>
+          </button>
+
           <!-- Command Palette Button -->
           <button class="command-palette-btn" id="btn-open-command-palette" title="Quick Search (⌘K)">
             <i data-lucide="search" style="width: 14px; height: 14px;"></i>
@@ -863,6 +869,18 @@
             </button>
           </div>
 
+          <!-- Rediffmail Account Status Banner -->
+          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(220, 38, 38, 0.08); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(220, 38, 38, 0.2);">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary);">
+              <i data-lucide="mail-check" style="width: 15px; height: 15px; color: #ef4444;"></i>
+              <span>Sending from: <strong style="color: var(--text-primary);">ganeshsgnr@rediffmail.com</strong></span>
+            </div>
+            <button type="button" class="btn btn-ghost btn-xs" id="btn-open-rediffmail-config" style="color: #ef4444; border: 1px solid rgba(220, 38, 38, 0.3); padding: 2px 8px;">
+              <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+              <span>Rediffmail Setup</span>
+            </button>
+          </div>
+
           <div class="form-group">
             <label class="form-label">Recipient Email</label>
             <input type="email" class="form-input" id="dispatch-email-to" placeholder="kailash@harbansoil.com">
@@ -875,19 +893,21 @@
             <label class="form-label">Email Body</label>
             <div class="dispatch-preview-box" id="email-preview-box"></div>
           </div>
-          <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
             <button class="btn btn-secondary btn-sm" id="btn-copy-email">
               <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
-              <span>Copy Email Text</span>
+              <span>Copy Text</span>
             </button>
-            <button class="btn btn-primary btn-sm" id="btn-open-email-client">
-              <i data-lucide="mail" style="width: 14px; height: 14px;"></i>
-              <span>Open Email Client</span>
-            </button>
-            <button class="btn btn-secondary btn-sm" id="btn-log-email-sent">
-              <i data-lucide="check" style="width: 14px; height: 14px;"></i>
-              <span>Mark Dispatched</span>
-            </button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-secondary btn-sm" id="btn-open-email-client" title="Open in webmail or desktop email client">
+                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                <span>Open Mail Client</span>
+              </button>
+              <button class="btn btn-primary btn-sm" id="btn-send-rediffmail-direct" style="background: #dc2626; border-color: #b91c1c; font-weight: 600;" title="Sends email with PDF attached directly via Rediffmail SMTP">
+                <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+                <span>⚡ Send via Rediffmail (PDF Attached)</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1264,6 +1284,100 @@
       <div class="modal-footer" style="justify-content: flex-end;">
         <button type="button" class="btn btn-ghost" id="btn-cancel-wa-qr">Close</button>
       </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: REDIFFMAIL / SMTP CONFIGURATION
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-rediffmail-config">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 34px; height: 34px; border-radius: 8px; background: rgba(220, 38, 38, 0.15); display: flex; align-items: center; justify-content: center; color: #ef4444;">
+            <i data-lucide="mail" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 16px;">Rediffmail SMTP Setup</h3>
+            <div style="font-size: 12px; color: var(--text-muted);">Official Firm Email: ganeshsgnr@rediffmail.com</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-close-rediffmail-modal">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+      <form id="form-rediffmail-config">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px; padding: 20px;">
+          
+          <div style="background: rgba(220, 38, 38, 0.08); border-left: 3px solid #ef4444; padding: 10px 14px; border-radius: 4px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+            <strong>Automated PDF Email Dispatch:</strong> Allows the platform to deliver official A4 contract PDFs directly to millers and buyers from <strong>ganeshsgnr@rediffmail.com</strong> with 1 click.
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Rediffmail Email Address *</label>
+            <input type="email" class="form-input" id="cfg-email-user" value="ganeshsgnr@rediffmail.com" required placeholder="ganeshsgnr@rediffmail.com">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Rediffmail Password *</label>
+            <div style="position: relative;">
+              <input type="password" class="form-input" id="cfg-email-pass" placeholder="Enter your Rediffmail password" style="padding-right: 40px;" required>
+              <button type="button" id="btn-toggle-email-pass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+              </button>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+              Saved securely in your local platform database.
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Account Type / Preset</label>
+              <select class="form-select" id="cfg-email-preset">
+                <option value="standard" selected>Rediffmail Standard (smtp.rediffmail.com:587)</option>
+                <option value="pro">Rediffmail Pro / Enterprise (mail.rediffmailpro.com:465)</option>
+                <option value="custom">Custom SMTP Server</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">From Name</label>
+              <input type="text" class="form-input" id="cfg-email-from-name" value="Ganesh & Company" placeholder="Ganesh & Company">
+            </div>
+          </div>
+
+          <div class="form-grid-2" id="cfg-custom-smtp-fields">
+            <div class="form-group">
+              <label class="form-label">SMTP Host</label>
+              <input type="text" class="form-input" id="cfg-email-host" value="smtp.rediffmail.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">SMTP Port</label>
+              <input type="number" class="form-input mono" id="cfg-email-port" value="587">
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--border);">
+            <div style="font-size: 13px; color: var(--text-secondary);">
+              <strong>Enable Direct Email Dispatch</strong>
+            </div>
+            <input type="checkbox" id="cfg-email-enabled" checked style="width: 18px; height: 18px; accent-color: #ef4444; cursor: pointer;">
+          </div>
+
+          <div id="email-test-feedback" style="display: none; font-size: 12px; padding: 8px 12px; border-radius: 4px;"></div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-test-rediffmail-connection">
+            <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+            <span>Test Connection</span>
+          </button>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-cancel-rediffmail-config">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm" style="background: #dc2626; border-color: #b91c1c;">Save Settings</button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 
