@@ -1243,7 +1243,7 @@ Phone: 94619-40113 / 94619-40114`
 
     const phoneInput = document.getElementById('dispatch-phone')?.value || deal.buyer_phone || '';
     const phoneDigits = phoneInput.replace(/[^0-9]/g, '');
-    const waText = this.currentWaText || document.getElementById('whatsapp-preview-box')?.textContent || '';
+    const waText = this.currentWaText || document.getElementById('whatsapp-preview-box')?.innerText || '';
 
     if (!phoneDigits) {
       this.showToast('Please enter a valid phone number', 'warning');
@@ -1273,7 +1273,7 @@ Phone: 94619-40113 / 94619-40114`
       const result = await resp.json();
       if (resp.ok && result.success) {
         this.showToast(`✓ Official PDF Contract delivered directly to +${phoneDigits} on WhatsApp!`, 'success', 7000);
-        this.logDispatchEvent('WHATSAPP', phoneDigits);
+        this.logDispatchEvent('WHATSAPP', phoneDigits, true);
       } else {
         if (result.status === 'GATEWAY_NOT_CONFIGURED' || result.status === 'NEEDS_QR') {
           this.openWhatsAppQrModal();
@@ -1308,7 +1308,7 @@ Phone: 94619-40113 / 94619-40114`
     this.showToast(`Opened email client with system-generated PDF notice`, 'info');
   },
 
-  async logDispatchEvent(channel, recipientVal = null) {
+  async logDispatchEvent(channel, recipientVal = null, silent = false) {
     if (!this.selectedDealForDispatch) return;
     const deal = this.selectedDealForDispatch;
     const targetVal = recipientVal || (channel === 'WHATSAPP' 
@@ -1328,7 +1328,7 @@ Phone: 94619-40113 / 94619-40114`
           status: 'SENT'
         })
       });
-      this.showToast(`Logged confirmation dispatch via ${channel}`, 'success');
+      if (!silent) this.showToast(`Logged confirmation dispatch via ${channel}`, 'success');
       await this.fetchDispatchLogs();
       this.updateCounters();
     } catch (_) {}

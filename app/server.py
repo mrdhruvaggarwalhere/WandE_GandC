@@ -430,9 +430,9 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 whatsapp_bot.start()
                 return self.send_json_response(whatsapp_bot.get_status())
 
+
             elif path == '/api/whatsapp/config':
                 from app.core.whatsapp_gateway import save_whatsapp_config
-                res = save_whatsapp_config(body)
                 return self.send_json_response(res)
 
             elif path == '/api/whatsapp/send-document':

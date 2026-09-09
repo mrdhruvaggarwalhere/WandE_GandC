@@ -107,6 +107,9 @@ class WhatsAppBot:
                             job["result"] = self._do_send_pdf(
                                 job["phone"], job["message"], job["pdf_path"], job["filename"]
                             )
+                        elif action == "custom":
+                            fn = job.get("fn")
+                            job["result"] = fn(self._page)
                         else:
                             job["result"] = {"success": False, "error": f"Unknown action: {action}"}
                     except Exception as job_err:
@@ -187,20 +190,35 @@ class WhatsAppBot:
         if not os.path.exists(pdf_path):
             return {"success": False, "error": f"PDF file not found: {pdf_path}"}
 
-        logger.info(f"Opening chat for phone: +{phone_digits}...")
+        old_header = ""
+        header_el = self._page.query_selector("header")
+        if header_el:
+            try:
+                old_header = header_el.inner_text().strip()
+            except Exception:
+                pass
+
+        # Close any lingering full-screen viewer or overlay
+        try:
+            self._page.keyboard.press("Escape")
+        except Exception:
+            pass
+
+        logger.info(f"Opening chat for phone: +{phone_digits} (previous chat header: {old_header.splitlines()[0] if old_header else 'None'})...")
         chat_url = f"https://web.whatsapp.com/send?phone={phone_digits}"
 
-        current_url = self._page.url or ""
-        if phone_digits in current_url:
-            print(f"[WhatsAppBot] Chat for +{phone_digits} is already active, skipping page reload!", flush=True)
-        else:
-            self._page.goto(chat_url, wait_until="domcontentloaded", timeout=30000)
+        # Navigate to target chat
+        try:
+            self._page.goto(chat_url, timeout=45000)
+        except Exception as nav_err:
+            logger.warning(f"page.goto note: {nav_err}")
 
-        # Wait for chat input or invalid phone number alert (fast check every 0.5s)
+        # Wait for target chat composer and attach button to appear
         chat_loaded = False
-        for _ in range(30):
-            time.sleep(0.5)
-            # Check invalid number popup
+        for attempt in range(40):
+            time.sleep(1.0)
+
+            # 1. Check invalid phone popup
             invalid_alert = self._page.query_selector("div:has-text('Phone number shared via url is invalid')")
             if invalid_alert:
                 return {
@@ -208,124 +226,163 @@ class WhatsAppBot:
                     "error": f"Phone number +{phone_digits} is invalid or not registered on WhatsApp."
                 }
 
-            composer = self._page.query_selector("footer div[contenteditable='true']")
-            attach_btn = self._page.query_selector("span[data-icon='plus'], span[data-icon='attach-menu-plus'], button[aria-label*='Attach']")
-            if composer or attach_btn:
+            # 2. Check if still syncing or loading
+            starting = self._page.query_selector("div:has-text('Starting chat'), div:has-text('Looking for phone number'), div[data-icon='reload'], div[role='progressbar']")
+            if starting:
+                continue
+
+            # 3. Check composer and attach button
+            composer = self._page.query_selector("footer div[contenteditable='true'], div[role='textbox'][aria-label*='Type a message']")
+            attach_btn = self._page.query_selector("button[aria-label*='Attach' i], span[data-icon='plus'], span[data-icon='attach-menu-plus']")
+
+            if composer and attach_btn:
+                # Chat is open, active, and composer is ready for input
                 chat_loaded = True
+                h = self._page.query_selector("header")
+                header_text = h.inner_text().splitlines()[0] if h else phone_digits
+                print(f"[WhatsAppBot] Chat ready for +{phone_digits} (header: {header_text}) after {attempt + 1}s", flush=True)
                 break
 
         if not chat_loaded:
-            return {"success": False, "error": "WhatsApp chat took too long to load (timeout 15s)."}
+            try:
+                self._page.screenshot(path="scratch/chat_timeout.png")
+            except Exception:
+                pass
+            return {"success": False, "error": f"WhatsApp chat for +{phone_digits} took too long to load."}
 
-        time.sleep(1)
+        # Ensure any open media viewer or overlay is closed first
+        close_btn = self._page.query_selector("div[aria-label='Close'], button[aria-label='Close'], span[data-icon='x-viewer']")
+        if close_btn:
+            try:
+                close_btn.click()
+                time.sleep(0.5)
+            except Exception:
+                pass
 
-        # 1. Attach the PDF file via WhatsApp Web Document attachment
+        # Clear any leftover unsent draft text in the footer composer
+        try:
+            self._page.evaluate("""() => {
+                const composer = document.querySelector("footer div[contenteditable='true']");
+                if (composer) {
+                    composer.innerText = '';
+                    composer.textContent = '';
+                }
+            }""")
+        except Exception:
+            pass
+
+        # 1. Attach the PDF file via WhatsApp Web Document uploader
+        print(f"[WhatsAppBot] Attaching PDF document: {pdf_path}", flush=True)
         uploaded = False
+        try:
+            # Open attachment menu (+)
+            attach_btn = self._page.locator("button[aria-label*='Attach' i], span[data-icon='plus'], span[data-icon='attach-menu-plus']").last
+            attach_btn.click()
+            time.sleep(0.6)
 
-        # Open attachment menu
-        attach_btn = self._page.query_selector("span[data-icon='plus'], span[data-icon='attach-menu-plus'], button[aria-label*='Attach']")
-        if attach_btn:
-            try:
-                attach_btn.click()
-                time.sleep(0.6)
-            except Exception as e:
-                print(f"[WhatsAppBot] Attach button click note: {e}", flush=True)
-
-        # Click the Document option with Playwright native file chooser
-        doc_item = self._page.query_selector("div[role='button']:has-text('Document'), li:has-text('Document'), [aria-label*='Document']")
-        if doc_item:
-            try:
-                with self._page.expect_file_chooser(timeout=4000) as fc_info:
-                    doc_item.click()
-                fc = fc_info.value
-                print(f"[WhatsAppBot] Setting PDF via native file chooser: {pdf_path}", flush=True)
-                fc.set_files(pdf_path)
-                uploaded = True
-            except Exception as fc_err:
-                print(f"[WhatsAppBot] expect_file_chooser note: {fc_err}", flush=True)
-
-        # Fallback: check file inputs
-        if not uploaded:
-            file_inputs = self._page.query_selector_all("input[type='file']")
-            target_input = None
-            for inp in file_inputs:
-                accept = (inp.get_attribute("accept") or "").lower()
-                if accept in ("*", "*/*") or "pdf" in accept or ("image" not in accept and accept != ""):
-                    target_input = inp
+            # Find 'Document' item in attach menu
+            doc_item = self._page.locator("li:has-text('Document'), div[role='button']:has-text('Document'), span:has-text('Document')").last
+            with self._page.expect_file_chooser(timeout=10000) as fc_info:
+                doc_item.click()
+            file_chooser = fc_info.value
+            file_chooser.set_files(pdf_path)
+            uploaded = True
+            print("[WhatsAppBot] Document file chooser attached PDF successfully.", flush=True)
+        except Exception as upload_err:
+            print(f"[WhatsAppBot] Document attach menu error: {upload_err}", flush=True)
+            # Fallback to direct input setting if available
+            for inp in self._page.query_selector_all("input[type='file']"):
+                try:
+                    inp.set_input_files(pdf_path)
+                    uploaded = True
                     break
-            if not target_input and file_inputs:
-                target_input = file_inputs[-1]
-            if target_input:
-                print(f"[WhatsAppBot] Setting PDF file on input: {pdf_path}", flush=True)
-                target_input.set_input_files(pdf_path)
-                uploaded = True
+                except Exception:
+                    pass
 
         if not uploaded:
             self._page.screenshot(path="scratch/no_input_found.png")
             return {"success": False, "error": "Could not locate WhatsApp Document attachment element."}
 
-        # Press Escape once to close any lingering attach popup menus
-        self._page.keyboard.press("Escape")
-        time.sleep(1.5)
-
         # 2. Wait for Document Preview screen to render
+        time.sleep(1.8)
         self._page.screenshot(path="scratch/step1_preview.png")
 
-        # 3. Add caption directly into the Document Preview input box
-        caption_added = False
+        # 3. Dispatch PDF attachment by focusing caption box and pressing Enter (WhatsApp Web native media submit)
+        print("[WhatsAppBot] Dispatching PDF attachment on Document Preview...", flush=True)
+        try:
+            caption = self._page.locator("div[contenteditable='true']").first
+            caption.click()
+            time.sleep(0.3)
+            self._page.keyboard.press("Enter")
+            print("[WhatsAppBot] Pressed Enter on caption to submit document.", flush=True)
+        except Exception as kbd_err:
+            print(f"[WhatsAppBot] Caption Enter note: {kbd_err}", flush=True)
+
+        # Secondary send button click
+        try:
+            send_btn = self._page.locator("span[data-icon='wds-ic-send-filled'], div[role='button'][aria-label^='Send']").last
+            if send_btn.count() > 0:
+                send_btn.click(timeout=1500)
+        except Exception:
+            pass
+
+        # 4. Wait for document preview to close (guaranteeing PDF upload handoff)
+        preview_closed = False
+        for _ in range(25):
+            time.sleep(0.5)
+            is_open = self._page.evaluate("""() => {
+                return !!document.querySelector("span[data-icon='wds-ic-send-filled'], div[role='button'][aria-label^='Send 1'], div[role='button'][aria-label^='Send 2']");
+            }""")
+            if not is_open:
+                preview_closed = True
+                print("[WhatsAppBot] Document preview closed! PDF attachment successfully dispatched.", flush=True)
+                break
+
+        if not preview_closed:
+            self._page.screenshot(path="scratch/preview_stuck.png")
+            return {
+                "success": False,
+                "error": "WhatsApp document preview could not be dispatched. Send button did not trigger."
+            }
+
+        time.sleep(1.5)
+
+        # 5. Send the formatted deal contract message with live URL & rich OpenGraph card into the chat
         if message:
             try:
-                # Copy formatted message with newlines to macOS clipboard
-                p = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
-                p.communicate(message.encode('utf-8'))
+                time.sleep(1.0)
+                # Focus chat composer
+                composer = self._page.locator("footer div[contenteditable='true'], div[role='textbox'][aria-label*='Type a message']").last
+                if composer.count() > 0:
+                    composer.click()
+                    time.sleep(0.4)
 
-                # Focus caption input inside the document preview
-                caption_loc = self._page.locator("div[aria-label='Document preview'] div[contenteditable='true'], div[aria-label*='caption' i], div[data-tab='10']").last
-                if caption_loc.count() > 0:
-                    caption_loc.focus()
-                    time.sleep(0.3)
-                    self._page.keyboard.press("Meta+v")
+                    # Insert formatted message directly (preserves line breaks and emojis)
+                    self._page.keyboard.insert_text(message)
+                    print("[WhatsAppBot] Formatted text inserted into composer, waiting for link preview card...", flush=True)
+
+                    # Give WhatsApp Web 2 seconds to parse URL and render Open Graph card
+                    time.sleep(2.0)
+
+                    # Submit message
+                    self._page.keyboard.press("Enter")
                     time.sleep(0.5)
-                    caption_added = True
-                    print("[WhatsAppBot] Formatted caption pasted into document preview.", flush=True)
-            except Exception as e:
-                print(f"[WhatsAppBot] Caption paste note: {e}", flush=True)
 
-        # 4. Click the green Send button on the preview using native Playwright locator
-        print("[WhatsAppBot] Clicking green Send button on attachment preview...", flush=True)
-        try:
-            send_btn = self._page.locator("span[data-icon='send'], div[role='button'][aria-label='Send'], span[data-icon='wds-ic-send-filled']").last
-            send_btn.click(force=True)
-        except Exception:
-            self._page.keyboard.press("Enter")
-
-        # 5. Wait for document preview to close (confirming dispatch)
-        preview_closed = False
-        for _ in range(12):
-            time.sleep(1)
-            preview_elem = self._page.query_selector("div:has-text('1 page'), div[aria-label='Document preview']")
-            if not preview_elem:
-                preview_closed = True
-                print("[WhatsAppBot] Document preview closed! PDF attachment dispatched.", flush=True)
-                break
+                    # Secondary JS click if needed
+                    self._page.evaluate("""() => {
+                        const icon = document.querySelector("footer span[data-icon='send'], footer span[data-icon='wds-ic-send-filled']");
+                        if (icon) {
+                            const btn = icon.closest("div[role='button'], button") || icon;
+                            btn.click();
+                        }
+                    }""")
+                    time.sleep(1.0)
+                    print("[WhatsAppBot] Deal confirmation text and link preview dispatched to WhatsApp chat.", flush=True)
+            except Exception as msg_err:
+                print(f"[WhatsAppBot] Text send note: {msg_err}", flush=True)
 
         time.sleep(1.5)
         self._page.screenshot(path="scratch/after_pdf_sent.png")
-
-        # 6. If caption was not added to preview, send it cleanly into chat footer via Meta+v (preserves all linebreaks)
-        if message and not caption_added:
-            try:
-                composer = self._page.locator("footer div[contenteditable='true']")
-                if composer.count() > 0:
-                    composer.focus()
-                    time.sleep(0.3)
-                    self._page.keyboard.press("Meta+v")
-                    time.sleep(0.5)
-                    self._page.keyboard.press("Enter")
-                    time.sleep(0.5)
-                    print("[WhatsAppBot] Formatted deal text dispatched via clipboard paste.", flush=True)
-            except Exception as msg_err:
-                print(f"[WhatsAppBot] Text send note: {msg_err}", flush=True)
 
         logger.info(f"Successfully sent PDF to +{phone_digits}")
         return {
@@ -364,6 +421,21 @@ class WhatsAppBot:
             return {"success": False, "error": "WhatsApp send operation timed out after 90 seconds."}
 
         return job.get("result") or {"success": False, "error": "No response from WhatsApp worker."}
+
+    def execute_in_worker(self, fn, timeout: int = 30) -> Any:
+        if self.status != "READY" or not self._page:
+            return {"error": f"Bot not ready (status={self.status})"}
+        done_event = threading.Event()
+        job = {
+            "action": "custom",
+            "fn": fn,
+            "done_event": done_event,
+            "result": None
+        }
+        self._job_queue.put(job)
+        if not done_event.wait(timeout=timeout):
+            return {"error": "Custom execution timed out"}
+        return job.get("result")
 
     def stop(self):
         self._stop_event.set()

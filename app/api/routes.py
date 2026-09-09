@@ -879,8 +879,12 @@ def create_dispatch_log(data: Dict[str, Any], actor_name: str = "Sanjay Kumar Ag
         if d_row:
             deal_id = d_row['id']
     recipient_type = data.get('recipient_type', 'BUYER')
+    if recipient_type not in ('BUYER', 'SELLER'):
+        recipient_type = 'BUYER'
     recipient_name = data.get('recipient_name', 'Counterparty')
-    channel = data.get('channel', 'WHATSAPP')
+    channel = str(data.get('channel', 'WHATSAPP')).upper()
+    if channel not in ('WHATSAPP', 'EMAIL'):
+        channel = 'WHATSAPP'
     phone_or_email = data.get('phone_or_email', '')
     message_preview = data.get('message_preview', '')
     status = data.get('status', 'SENT')
