@@ -96,7 +96,9 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         # Serve Standalone Online Contract View
         if path.startswith('/contract/'):
-            deal_id = path[len('/contract/'):].strip('/')
+            raw_id = path[len('/contract/'):].strip('/')
+            unquoted = urllib.parse.unquote(raw_id)
+            deal_id = re.sub(r'[^a-zA-Z0-9_-]', '', unquoted)
             return self.serve_standalone_contract(deal_id)
 
         # Serve SPA Index
@@ -222,7 +224,8 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return self.send_json_response(chains)
 
             elif path.startswith('/api/deals/') and path.endswith('/pdf'):
-                deal_id = path.split('/')[3]
+                raw_id = path.split('/')[3]
+                deal_id = re.sub(r'[^a-zA-Z0-9_-]', '', urllib.parse.unquote(raw_id))
                 cur.execute("""
                     SELECT 
                         d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,

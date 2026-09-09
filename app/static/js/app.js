@@ -979,19 +979,26 @@ const app = {
 *Advance Payment Date:* ${advance}
 *Delivery Condition:* ${delivery}
 ━━━━━━━━━━━━━━━━━━━━━━━━
-📄 *Official Document:* ${pdfName}
-🔗 *View & Download PDF:* ${contractUrl}
-📥 *Direct PDF Link:* ${directPdfUrl}
+📄 *Attached:* ${pdfName}
+
+🔗 *View Official Contract:*
+${contractUrl}
+
+📥 *Download PDF Document:*
+${directPdfUrl}
+
 ⚠️ *Note:* This PDF is a system-generated document and does not require a physical signature.
 _All deals subject to Sri Ganganagar Jurisdiction._
 _For inquiries contact: Sanjay Kumar Aggarwal (94619-40113)_`;
+
+    this.currentWaText = waText;
 
     // Previews
     if (document.getElementById('whatsapp-preview-box')) document.getElementById('whatsapp-preview-box').textContent = waText;
     if (document.getElementById('both-preview-box')) document.getElementById('both-preview-box').textContent = waText;
 
-    // Direct Web Link
-    const waUrl = `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${encodeURIComponent(waText)}`;
+    // Direct Web Link with proper CRLF line breaks
+    const waUrl = `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${encodeURIComponent(waText.replace(/\r?\n/g, '\r\n'))}`;
     const openBtn = document.getElementById('btn-open-whatsapp-web');
     if (openBtn) openBtn.href = waUrl;
 
@@ -1241,7 +1248,7 @@ Phone: 94619-40113 / 94619-40114`
 
     const phoneInput = document.getElementById('dispatch-phone')?.value || deal.buyer_phone || '';
     const phoneDigits = phoneInput.replace(/[^0-9]/g, '');
-    const waText = document.getElementById('whatsapp-preview-box')?.textContent || '';
+    const waText = this.currentWaText || document.getElementById('whatsapp-preview-box')?.textContent || '';
 
     if (!phoneDigits) {
       this.showToast('Please enter a valid phone number', 'warning');
@@ -2177,12 +2184,15 @@ Phone: 94619-40113 / 94619-40114`
       if (!deal) return;
       const phoneInput = document.getElementById('dispatch-phone')?.value || deal.buyer_phone || '';
       const phoneDigits = phoneInput.replace(/[^0-9]/g, '');
-      const waText = document.getElementById('whatsapp-preview-box')?.textContent || '';
+      const waText = this.currentWaText || document.getElementById('whatsapp-preview-box')?.textContent || '';
 
       if (phoneDigits) {
-        const waUrl = `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${encodeURIComponent(waText)}`;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(waText).catch(() => {});
+        }
+        const waUrl = `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${encodeURIComponent(waText.replace(/\r?\n/g, '\r\n'))}`;
         window.open(waUrl, '_blank');
-        this.showToast(`✓ Opened WhatsApp for +${phoneDigits} (Instant 0.1s dispatch)`, 'success', 4000);
+        this.showToast(`✓ Opened WhatsApp for +${phoneDigits} (Formatted text copied to clipboard)`, 'success', 5000);
         this.logDispatchEvent('WHATSAPP', phoneInput);
         document.getElementById('modal-dispatch')?.classList.remove('active');
       } else {
