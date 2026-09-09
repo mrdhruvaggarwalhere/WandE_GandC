@@ -979,14 +979,9 @@ const app = {
 *Advance Payment Date:* ${advance}
 *Delivery Condition:* ${delivery}
 ━━━━━━━━━━━━━━━━━━━━━━━━
-📄 *Attached:* ${pdfName}
-
-🔗 *View Official Contract:*
-${contractUrl}
-
-📥 *Download PDF Document:*
-${directPdfUrl}
-
+📄 *Official Document:* ${pdfName}
+🔗 *View & Download PDF:* ${contractUrl}
+📥 *Direct PDF Link:* ${directPdfUrl}
 ⚠️ *Note:* This PDF is a system-generated document and does not require a physical signature.
 _All deals subject to Sri Ganganagar Jurisdiction._
 _For inquiries contact: Sanjay Kumar Aggarwal (94619-40113)_`;
