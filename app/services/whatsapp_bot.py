@@ -188,12 +188,17 @@ class WhatsAppBot:
 
         logger.info(f"Opening chat for phone: +{phone_digits}...")
         chat_url = f"https://web.whatsapp.com/send?phone={phone_digits}"
-        self._page.goto(chat_url, wait_until="domcontentloaded", timeout=45000)
 
-        # Wait for chat input or invalid phone number alert
+        current_url = self._page.url or ""
+        if phone_digits in current_url:
+            print(f"[WhatsAppBot] Chat for +{phone_digits} is already active, skipping page reload!", flush=True)
+        else:
+            self._page.goto(chat_url, wait_until="domcontentloaded", timeout=30000)
+
+        # Wait for chat input or invalid phone number alert (fast check every 0.5s)
         chat_loaded = False
-        for _ in range(25):
-            time.sleep(1)
+        for _ in range(30):
+            time.sleep(0.5)
             # Check invalid number popup
             invalid_alert = self._page.query_selector("div:has-text('Phone number shared via url is invalid')")
             if invalid_alert:
@@ -209,7 +214,7 @@ class WhatsAppBot:
                 break
 
         if not chat_loaded:
-            return {"success": False, "error": "WhatsApp chat took too long to load (timeout 25s)."}
+            return {"success": False, "error": "WhatsApp chat took too long to load (timeout 15s)."}
 
         time.sleep(1)
 
@@ -222,53 +227,58 @@ class WhatsAppBot:
             except Exception as e:
                 print(f"[WhatsAppBot] Attach click error: {e}", flush=True)
 
-        # 2. Click the 'Document' option via expect_file_chooser (or upload directly to document input)
-        doc_item = self._page.query_selector("div[role='button']:has-text('Document'), li:has-text('Document'), button:has-text('Document'), [aria-label*='Document']")
+        # 2. Upload directly to the Document file input (accept='*' or inside Document option)
         uploaded = False
 
-        if doc_item:
-            print("[WhatsAppBot] Found 'Document' menu option. Uploading PDF via file chooser...", flush=True)
-            try:
-                with self._page.expect_file_chooser(timeout=8000) as fc_info:
-                    doc_item.click()
-                fc = fc_info.value
-                fc.set_files(pdf_path)
-                uploaded = True
-                print(f"[WhatsAppBot] File chooser set files successfully: {pdf_path}", flush=True)
-            except Exception as fc_err:
-                print(f"[WhatsAppBot] expect_file_chooser fallback: {fc_err}", flush=True)
-                doc_inp = doc_item.query_selector("input[type='file']")
-                if doc_inp:
-                    doc_inp.set_input_files(pdf_path)
-                    uploaded = True
+        # Query all file inputs on the page
+        file_inputs = self._page.query_selector_all("input[type='file']")
+        target_input = None
 
-        if not uploaded:
-            # Fallback: Query all inputs, pick the one that accepts documents or all files (NOT image-only)
-            file_inputs = self._page.query_selector_all("input[type='file']")
-            target_input = None
-            for inp in file_inputs:
-                accept = inp.get_attribute("accept") or ""
-                if "image" not in accept:
-                    target_input = inp
-                    break
-            if not target_input and file_inputs:
-                target_input = file_inputs[0]
-            if target_input:
-                target_input.set_input_files(pdf_path)
-                uploaded = True
+        # Look specifically for the document input (accept='*' or does NOT restrict to image)
+        for inp in file_inputs:
+            accept = (inp.get_attribute("accept") or "").lower()
+            if accept in ("*", "*/*") or "pdf" in accept or ("image" not in accept and accept != ""):
+                target_input = inp
+                break
+
+        # If not found yet, check inside the doc_item if present
+        if not target_input:
+            doc_item = self._page.query_selector("div[role='button']:has-text('Document'), li:has-text('Document'), [aria-label*='Document']")
+            if doc_item:
+                target_input = doc_item.query_selector("input[type='file']")
+
+        # Fallback to the last input (in WhatsApp Web, Document is typically the last file input added)
+        if not target_input and file_inputs:
+            target_input = file_inputs[-1]
+
+        if target_input:
+            print(f"[WhatsAppBot] Setting PDF file directly on document input: {pdf_path}", flush=True)
+            target_input.set_input_files(pdf_path)
+            uploaded = True
+        else:
+            print("[WhatsAppBot] No direct file input found, trying Document menu click...", flush=True)
+            doc_item = self._page.query_selector("div[role='button']:has-text('Document'), li:has-text('Document'), [aria-label*='Document']")
+            if doc_item:
+                try:
+                    with self._page.expect_file_chooser(timeout=3000) as fc_info:
+                        doc_item.click()
+                    fc = fc_info.value
+                    fc.set_files(pdf_path)
+                    uploaded = True
+                except Exception:
+                    pass
 
         if not uploaded:
             self._page.screenshot(path="scratch/no_input_found.png")
             return {"success": False, "error": "Could not locate WhatsApp Document attachment element."}
 
-        # 3. Wait for the Document Preview screen to render
-        time.sleep(3)
+        # 3. Wait for Document Preview screen to render (1.5s is plenty)
+        time.sleep(1.5)
         self._page.screenshot(path="scratch/step1_preview.png")
 
         # 4. Click the green Send button on the document preview screen
         print("[WhatsAppBot] Clicking green Send button on attachment preview...", flush=True)
         clicked = self._page.evaluate("""() => {
-            // Find the green circular send button on the attachment preview screen
             const sendIcons = Array.from(document.querySelectorAll('span[data-icon="send"], span[data-icon="wds-ic-send-filled"], span[data-icon="send-light"]'));
             if (sendIcons.length > 0) {
                 const lastIcon = sendIcons[sendIcons.length - 1];
@@ -289,15 +299,14 @@ class WhatsAppBot:
             print("[WhatsAppBot] Send button not matched, pressing Enter...", flush=True)
             self._page.keyboard.press("Enter")
 
-        # 5. Wait for the document preview to close (meaning the PDF was actually sent)
+        # 5. Wait for the document preview to close (fast check, max 5s)
         preview_closed = False
-        for _ in range(15):
+        for _ in range(5):
             time.sleep(1)
-            # Check if preview is closed (the green send button on the preview disappears)
             preview_elem = self._page.query_selector("div:has-text('1 page'), div[aria-label='Document preview']")
             if not preview_elem:
                 preview_closed = True
-                print("[WhatsAppBot] Document preview closed! PDF attachment has been dispatched.", flush=True)
+                print("[WhatsAppBot] Document preview closed! PDF attachment dispatched.", flush=True)
                 break
             else:
                 self._page.evaluate("""() => {
@@ -305,21 +314,27 @@ class WhatsAppBot:
                     if (btns.length > 0) btns[btns.length - 1].click();
                 }""")
 
-        time.sleep(2)
+        time.sleep(1)
         self._page.screenshot(path="scratch/after_pdf_sent.png")
 
-        # 5. Also send formatted text details as a follow-up message in chat
+        # 6. Send formatted deal text details without blocking click
         if message:
             try:
-                composer = self._page.query_selector("footer div[contenteditable='true']")
-                if composer:
-                    composer.click()
-                    self._page.keyboard.insert_text(message)
-                    time.sleep(0.5)
+                focused = self._page.evaluate("""(text) => {
+                    const comp = document.querySelector('footer div[contenteditable="true"]');
+                    if (comp) {
+                        comp.focus();
+                        document.execCommand('insertText', false, text);
+                        return true;
+                    }
+                    return false;
+                }""", message)
+                if focused:
+                    time.sleep(0.3)
                     self._page.keyboard.press("Enter")
-                    time.sleep(2)
+                    time.sleep(0.5)
             except Exception as msg_err:
-                logger.warning(f"Could not send follow-up message: {msg_err}")
+                print(f"[WhatsAppBot] Text send note: {msg_err}", flush=True)
 
         logger.info(f"Successfully sent PDF to +{phone_digits}")
         return {

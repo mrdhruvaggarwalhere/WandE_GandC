@@ -109,10 +109,13 @@ const app = {
     }, 3500);
   },
 
+  publicUrl: null,
+
   // Global Data Refresh
   async refreshAllData() {
     try {
       await Promise.all([
+        this.fetchPublicUrl(),
         this.fetchParties(),
         this.fetchProducts(),
         this.fetchDeals(),
@@ -127,6 +130,17 @@ const app = {
       this.renderMandiTicker();
     } catch (e) {
       console.error("Initialization data fetch error:", e);
+    }
+  },
+
+  async fetchPublicUrl() {
+    try {
+      const res = await this.api('/api/public-url');
+      if (res && res.public_url) {
+        this.publicUrl = res.public_url;
+      }
+    } catch (e) {
+      console.warn('Public URL not loaded:', e);
     }
   },
 
@@ -948,8 +962,9 @@ const app = {
     if (document.getElementById('dispatch-email-to')) document.getElementById('dispatch-email-to').value = emailTo;
 
     // WhatsApp Formatted Text with System-Generated Notice and Direct Online Link
-    const origin = window.location.origin;
-    const contractUrl = `${origin}/contract/${deal.id}`;
+    const baseUrl = this.publicUrl || window.location.origin;
+    const contractUrl = `${baseUrl}/contract/${deal.id}`;
+    const directPdfUrl = `${baseUrl}/api/deals/${deal.id}/pdf`;
     const waText = 
 `*BARGAIN CONFIRMATION — GANESH & COMPANY*
 *Sri Ganganagar, Rajasthan*
@@ -965,7 +980,8 @@ const app = {
 *Delivery Condition:* ${delivery}
 ━━━━━━━━━━━━━━━━━━━━━━━━
 📄 *Official Document:* ${pdfName}
-🔗 *View / Download PDF Online:* ${contractUrl}
+🔗 *View & Download PDF:* ${contractUrl}
+📥 *Direct PDF Link:* ${directPdfUrl}
 ⚠️ *Note:* This PDF is a system-generated document and does not require a physical signature.
 _All deals subject to Sri Ganganagar Jurisdiction._
 _For inquiries contact: Sanjay Kumar Aggarwal (94619-40113)_`;
@@ -1239,46 +1255,33 @@ Phone: 94619-40113 / 94619-40114`
       return;
     }
 
-    const sendBtn = document.getElementById('btn-direct-send-wa');
-    const origHtml = sendBtn ? sendBtn.innerHTML : '';
-    if (sendBtn) {
-      sendBtn.disabled = true;
-      sendBtn.innerHTML = '<span class="spinner-sm" style="display: inline-block; width: 14px; height: 14px; border: 2px solid #000; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> <span>Sending PDF...</span>';
-    }
+    // Immediate non-blocking feedback: User never waits
+    this.showToast(`🤖 Automated bot uploading PDF in background to +${phoneDigits}. You can continue working!`, 'info', 6000);
+    document.getElementById('modal-dispatch')?.classList.remove('active');
 
-    this.showToast(`Delivering official PDF to +${phoneDigits} on WhatsApp... please wait`, 'info', 8000);
-
-    try {
-      const resp = await fetch('/api/whatsapp/send-document', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          deal_id: deal.id,
-          phone: phoneDigits,
-          caption: waText
-        })
-      });
+    fetch('/api/whatsapp/send-document', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deal_id: deal.id,
+        phone: phoneDigits,
+        caption: waText
+      })
+    }).then(async (resp) => {
       const result = await resp.json();
-
       if (resp.ok && result.success) {
-        this.showToast(`✓ PDF Contract delivered directly to +${phoneDigits} on WhatsApp!`, 'success', 5000);
-        document.getElementById('modal-dispatch')?.classList.remove('active');
+        this.showToast(`✓ Official PDF Contract delivered directly to +${phoneDigits} on WhatsApp!`, 'success', 7000);
         this.logDispatchEvent('WHATSAPP', phoneDigits);
       } else {
         if (result.status === 'GATEWAY_NOT_CONFIGURED' || result.status === 'NEEDS_QR') {
           this.openWhatsAppQrModal();
         } else {
-          this.showToast(`WhatsApp Send: ${result.error || result.message || 'Failed to send document'}`, 'danger', 7000);
+          this.showToast(`WhatsApp Bot: ${result.error || result.message || 'Check bot connection'}`, 'warning', 7000);
         }
       }
-    } catch (err) {
-      this.showToast(`Connection error: ${err.message}`, 'danger');
-    } finally {
-      if (sendBtn) {
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = origHtml;
-      }
-    }
+    }).catch(err => {
+      this.showToast(`WhatsApp Send: ${err.message}`, 'danger', 6000);
+    });
   },
 
 
@@ -2176,12 +2179,14 @@ Phone: 94619-40113 / 94619-40114`
       const phoneDigits = phoneInput.replace(/[^0-9]/g, '');
       const waText = document.getElementById('whatsapp-preview-box')?.textContent || '';
 
-      // Open WhatsApp Web with prefilled message (no annoying local file download)
       if (phoneDigits) {
         const waUrl = `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${encodeURIComponent(waText)}`;
         window.open(waUrl, '_blank');
-        this.showToast(`Opened WhatsApp chat for +${phoneDigits}`, 'success');
+        this.showToast(`✓ Opened WhatsApp for +${phoneDigits} (Instant 0.1s dispatch)`, 'success', 4000);
         this.logDispatchEvent('WHATSAPP', phoneInput);
+        document.getElementById('modal-dispatch')?.classList.remove('active');
+      } else {
+        this.showToast('Please enter a valid phone number', 'warning');
       }
     });
 

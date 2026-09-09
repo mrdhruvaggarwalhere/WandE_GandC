@@ -8,6 +8,8 @@ import socketserver
 import json
 import os
 import urllib.parse
+import re
+import subprocess
 from datetime import datetime, date
 from typing import Dict, Any, Optional
 
@@ -47,6 +49,23 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def send_error_json(self, message: str, status_code: int = 400):
         self.send_json_response({'error': message, 'status': 'error'}, status_code=status_code)
+
+    @classmethod
+    def get_active_public_url(cls) -> Optional[str]:
+        env_url = os.environ.get("PUBLIC_URL")
+        if env_url:
+            return env_url.rstrip("/")
+        tunnel_log = os.path.join(os.path.dirname(BASE_DIR), "scratch", "tunnel.log")
+        if os.path.exists(tunnel_log):
+            try:
+                with open(tunnel_log, "r", encoding="utf-8") as f:
+                    for line in f:
+                        m = re.search(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", line)
+                        if m:
+                            return m.group(0)
+            except Exception:
+                pass
+        return None
 
     def read_json_body(self) -> Dict[str, Any]:
         content_length = int(self.headers.get('Content-Length', 0))
@@ -129,6 +148,11 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 conn.close()
                 logs = api_routes.get_dispatch_logs()
                 return self.send_json_response(logs)
+
+            elif path == '/api/public-url':
+                conn.close()
+                url = self.get_active_public_url()
+                return self.send_json_response({"public_url": url})
 
             elif path == '/api/deals' or path == '/api/bargains':
                 chain_id = query_params.get('chain_id', [None])[0]
@@ -908,9 +932,29 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             'assertions': assertions
         }
 
+def ensure_tunnel_running():
+    cloudflared_bin = os.path.join(os.path.dirname(BASE_DIR), "scratch", "cloudflared")
+    if not os.path.exists(cloudflared_bin):
+        return
+    try:
+        res = subprocess.run(["pgrep", "-f", "cloudflared tunnel"], capture_output=True, text=True)
+        if res.returncode == 0 and res.stdout.strip():
+            return
+        tunnel_log_path = os.path.join(os.path.dirname(BASE_DIR), "scratch", "tunnel.log")
+        with open(tunnel_log_path, "a") as logf:
+            subprocess.Popen(
+                [cloudflared_bin, "tunnel", "--url", "http://localhost:8080", "--no-autoupdate"],
+                stdout=logf,
+                stderr=subprocess.STDOUT,
+                close_fds=True
+            )
+    except Exception as e:
+        print(f"[Tunnel] Notice: {e}", flush=True)
+
 def start_server(port: int = 8080):
     init_db()
     seed_all()
+    ensure_tunnel_running()
     socketserver.TCPServer.allow_reuse_address = True
     handler = BrokerageHTTPRequestHandler
     with socketserver.TCPServer(("", port), handler) as httpd:
