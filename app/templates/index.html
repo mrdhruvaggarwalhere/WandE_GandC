@@ -135,37 +135,40 @@
             <span class="pulse-dot"></span>
             <span>MANDI LIVE</span>
           </div>
-          <div class="ticker-track" id="mandi-ticker-track">
-            <!-- Populated dynamically via JS -->
-            <div class="ticker-item">
-              <span>[BGN-006] Mustard Oil 32 MT</span>
-              <span>•</span>
-              <strong>HARBANS ➔ TERAI</strong>
-              <span>•</span>
-              <span class="rate">₹15,250/Qtl</span>
-            </div>
-            <div class="ticker-item">
-              <span>[BGN-004] Mustard Cake 40 MT</span>
-              <span>•</span>
-              <strong>RAJASTHAN ➔ KUBER</strong>
-              <span>•</span>
-              <span class="rate">₹2,850/Qtl</span>
-            </div>
-            <div class="ticker-item">
-              <span>[BGN-003] Refined Soya 25 MT</span>
-              <span>•</span>
-              <strong>HARBANS ➔ SHREE GANESH</strong>
-              <span>•</span>
-              <span class="rate">₹12,400/Qtl</span>
+          <div class="ticker-viewport">
+            <div class="ticker-track" id="mandi-ticker-track">
+              <!-- Populated dynamically via JS -->
+              <div class="ticker-item">
+                <span>[BGN-006] Mustard Oil 32 MT</span>
+                <span>•</span>
+                <strong>HARBANS ➔ TERAI</strong>
+                <span>•</span>
+                <span class="rate">₹15,250/Qtl</span>
+              </div>
+              <div class="ticker-item">
+                <span>[BGN-004] Mustard Cake 40 MT</span>
+                <span>•</span>
+                <strong>RAJASTHAN ➔ KUBER</strong>
+                <span>•</span>
+                <span class="rate">₹2,850/Qtl</span>
+              </div>
+              <div class="ticker-item">
+                <span>[BGN-003] Refined Soya 25 MT</span>
+                <span>•</span>
+                <strong>HARBANS ➔ SHREE GANESH</strong>
+                <span>•</span>
+                <span class="rate">₹12,400/Qtl</span>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="topbar-right">
-          <!-- Rediffmail Quick Config Button -->
-          <button class="btn btn-secondary btn-sm" id="btn-topbar-rediffmail" title="Configure Rediffmail (ganeshsgnr@rediffmail.com)" style="display: inline-flex; align-items: center; gap: 6px; border-color: rgba(220, 38, 38, 0.35); color: #fca5a5; padding: 6px 10px;">
-            <i data-lucide="mail" style="width: 14px; height: 14px; color: #ef4444;"></i>
-            <span style="font-size: 12px; font-weight: 600;">Rediffmail</span>
+          <!-- Email Gateway Quick Settings Button -->
+          <button class="btn btn-secondary btn-sm" id="btn-topbar-rediffmail" title="Email Dispatch Gateway Settings" style="display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; font-size: 12px; font-weight: 500;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--emerald); box-shadow: 0 0 6px var(--emerald);"></span>
+            <i data-lucide="mail" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+            <span>Email Gateway</span>
           </button>
 
           <!-- Command Palette Button -->
@@ -741,7 +744,7 @@
         <div class="profile-tabs" id="dispatch-tabs">
           <button class="profile-tab-btn active" data-tab="both">🚀 Send to Both (WhatsApp &amp; Email)</button>
           <button class="profile-tab-btn" data-tab="whatsapp">💬 WhatsApp Web</button>
-          <button class="profile-tab-btn" data-tab="email">✉️ Email Client</button>
+          <button class="profile-tab-btn" data-tab="email">✉️ Email Dispatch</button>
         </div>
 
         <!-- Tab 1: Send to Both (WhatsApp & Email) -->
@@ -869,15 +872,19 @@
             </button>
           </div>
 
-          <!-- Rediffmail Account Status Banner -->
-          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(220, 38, 38, 0.08); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(220, 38, 38, 0.2);">
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary);">
-              <i data-lucide="mail-check" style="width: 15px; height: 15px; color: #ef4444;"></i>
-              <span>Sending from: <strong style="color: var(--text-primary);">ganeshsgnr@rediffmail.com</strong></span>
+          <!-- Active Email Gateway Status Banner -->
+          <div class="email-gateway-banner" style="display: flex; justify-content: space-between; align-items: center; background: rgba(16, 185, 129, 0.07); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid rgba(16, 185, 129, 0.22);">
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); flex-shrink: 0;"></span>
+              <div>
+                <span style="color: var(--text-muted);">From: </span>
+                <strong style="color: var(--text-main);">Ganesh &amp; Company</strong>
+                <span style="color: var(--text-muted); font-size: 11.5px; margin-left: 4px;">(&bull; Reply-To: <span class="mono" style="color: var(--emerald);">ganeshsgnr@rediffmail.com</span>)</span>
+              </div>
             </div>
-            <button type="button" class="btn btn-ghost btn-xs" id="btn-open-rediffmail-config" style="color: #ef4444; border: 1px solid rgba(220, 38, 38, 0.3); padding: 2px 8px;">
+            <button type="button" class="btn btn-ghost btn-xs" id="btn-open-rediffmail-config" style="color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px;" title="Configure Email Gateway Settings">
               <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
-              <span>Rediffmail Setup</span>
+              <span>Gateway Settings</span>
             </button>
           </div>
 
@@ -903,9 +910,9 @@
                 <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
                 <span>Open Mail Client</span>
               </button>
-              <button class="btn btn-primary btn-sm" id="btn-send-rediffmail-direct" style="background: #dc2626; border-color: #b91c1c; font-weight: 600;" title="Sends email with PDF attached directly via Rediffmail SMTP">
+              <button class="btn btn-primary btn-sm" id="btn-send-rediffmail-direct" style="background: var(--emerald); border-color: #059669; color: #fff; font-weight: 600; padding: 7px 16px; box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25);" title="Sends email with PDF attached directly">
                 <i data-lucide="send" style="width: 14px; height: 14px;"></i>
-                <span>⚡ Send via Rediffmail (PDF Attached)</span>
+                <span>⚡ Send Contract Email (PDF Attached)</span>
               </button>
             </div>
           </div>
@@ -1294,12 +1301,12 @@
     <div class="modal-card" style="max-width: 520px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <div style="width: 34px; height: 34px; border-radius: 8px; background: rgba(220, 38, 38, 0.15); display: flex; align-items: center; justify-content: center; color: #ef4444;">
-            <i data-lucide="mail" style="width: 18px; height: 18px;"></i>
+          <div style="width: 34px; height: 34px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; color: var(--emerald);">
+            <i data-lucide="mail-check" style="width: 18px; height: 18px;"></i>
           </div>
           <div>
-            <h3 style="margin: 0; font-size: 16px;">Rediffmail SMTP Setup</h3>
-            <div style="font-size: 12px; color: var(--text-muted);">Official Firm Email: ganeshsgnr@rediffmail.com</div>
+            <h3 style="margin: 0; font-size: 16px;">Email Gateway &amp; SMTP Settings</h3>
+            <div style="font-size: 12px; color: var(--text-muted);">Firm Identity: Ganesh &amp; Company &bull; ganeshsgnr@rediffmail.com</div>
           </div>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-close-rediffmail-modal">
@@ -1309,8 +1316,8 @@
       <form id="form-rediffmail-config">
         <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px; padding: 20px;">
           
-          <div style="background: rgba(220, 38, 38, 0.08); border-left: 3px solid #ef4444; padding: 10px 14px; border-radius: 4px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
-            <strong>Automated PDF Email Dispatch:</strong> Allows the platform to deliver official A4 contract PDFs directly to millers and buyers from <strong>ganeshsgnr@rediffmail.com</strong> with 1 click.
+          <div style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid var(--emerald); padding: 10px 14px; border-radius: 4px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+            <strong>Automated Contract Email Dispatch:</strong> Sends official A4 contract PDFs directly to millers and buyers from <strong>Ganesh &amp; Company</strong> with replies routing to <strong>ganeshsgnr@rediffmail.com</strong>.
           </div>
 
           <div class="form-group">
@@ -1376,7 +1383,7 @@
           </button>
           <div style="display: flex; gap: 8px;">
             <button type="button" class="btn btn-ghost btn-sm" id="btn-cancel-rediffmail-config">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm" style="background: #dc2626; border-color: #b91c1c;">Save Settings</button>
+            <button type="submit" class="btn btn-primary btn-sm" style="background: var(--emerald); border-color: #059669; font-weight: 600;">Save Settings</button>
           </div>
         </div>
       </form>

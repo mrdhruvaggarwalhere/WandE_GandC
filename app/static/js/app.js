@@ -1403,7 +1403,7 @@ Phone: 94619-40113 / 94619-40114`
         body: JSON.stringify(payload)
       });
 
-      this.showToast('✓ Rediffmail SMTP configuration saved successfully!', 'success', 5000);
+      this.showToast('✓ Email Gateway configuration saved successfully!', 'success', 5000);
       this.closeRediffmailModal();
     } catch (err) {
       this.showToast(`Failed to save settings: ${err.message}`, 'danger');
@@ -1491,7 +1491,7 @@ Phone: 94619-40113 / 94619-40114`
     }
 
     // Immediate non-blocking notification: user does not wait
-    this.showToast(`📨 Sending official PDF contract from ganeshsgnr@rediffmail.com to ${emailTo}...`, 'info', 6000);
+    this.showToast(`📨 Sending official PDF contract to ${emailTo}...`, 'info', 4000);
     document.getElementById('modal-dispatch')?.classList.remove('active');
 
     try {
@@ -1509,11 +1509,11 @@ Phone: 94619-40113 / 94619-40114`
 
       const data = await resp.json();
       if (resp.ok && data.success) {
-        this.showToast(`✓ Official PDF Contract successfully sent to ${emailTo} via Rediffmail!`, 'success', 7000);
+        this.showToast(`✓ Official PDF Contract successfully delivered to ${emailTo}!`, 'success', 6000);
         await this.logDispatchEvent('EMAIL', emailTo, true);
       } else {
-        const err = data.error || 'Failed to send email via Rediffmail';
-        this.showToast(`Rediffmail Send Failed: ${err}`, 'danger', 8000);
+        const err = data.error || 'Failed to send email';
+        this.showToast(`Email Dispatch Failed: ${err}`, 'danger', 8000);
         if (err.toLowerCase().includes('password') || err.toLowerCase().includes('auth') || err.toLowerCase().includes('not configured')) {
           this.openRediffmailModal();
         }
