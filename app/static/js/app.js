@@ -1346,7 +1346,9 @@ Phone: 94619-40113 / 94619-40114`
 
         // Sync preset
         if (presetSelect) {
-          if (cfg.smtp_host === 'smtp.rediffmail.com' && Number(cfg.smtp_port) === 587) {
+          if (cfg.smtp_host === 'smtp-relay.brevo.com' || cfg.smtp_host === 'smtp-relay.sendinblue.com') {
+            presetSelect.value = 'brevo';
+          } else if (cfg.smtp_host === 'smtp.rediffmail.com' && Number(cfg.smtp_port) === 587) {
             presetSelect.value = 'standard';
           } else if (cfg.smtp_host === 'mail.rediffmailpro.com' && (Number(cfg.smtp_port) === 465 || Number(cfg.smtp_port) === 587)) {
             presetSelect.value = 'pro';
@@ -2472,7 +2474,10 @@ Phone: 94619-40113 / 94619-40114`
       const preset = e.target.value;
       const hostInput = document.getElementById('cfg-email-host');
       const portInput = document.getElementById('cfg-email-port');
-      if (preset === 'standard') {
+      if (preset === 'brevo') {
+        if (hostInput) hostInput.value = 'smtp-relay.brevo.com';
+        if (portInput) portInput.value = '587';
+      } else if (preset === 'standard') {
         if (hostInput) hostInput.value = 'smtp.rediffmail.com';
         if (portInput) portInput.value = '587';
       } else if (preset === 'pro') {
