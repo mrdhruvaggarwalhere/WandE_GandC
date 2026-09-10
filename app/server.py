@@ -172,7 +172,13 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
                         s.trade_name AS seller_trade_name, s.gstin AS seller_gstin, s.pan AS seller_pan,
                         s.phone AS seller_phone, s.contacts_json AS seller_contacts,
-                        p.name AS product_name, c.original_bill_seller_id, c.final_bill_buyer_id
+                        p.name AS product_name, c.original_bill_seller_id, c.final_bill_buyer_id,
+                        (SELECT status FROM dispatch_logs WHERE (deal_id = d.id OR deal_id = d.bgn_code) AND channel = 'WHATSAPP' ORDER BY created_at DESC LIMIT 1) AS wa_dispatch_status,
+                        (SELECT created_at FROM dispatch_logs WHERE (deal_id = d.id OR deal_id = d.bgn_code) AND channel = 'WHATSAPP' ORDER BY created_at DESC LIMIT 1) AS wa_dispatch_time,
+                        (SELECT phone_or_email FROM dispatch_logs WHERE (deal_id = d.id OR deal_id = d.bgn_code) AND channel = 'WHATSAPP' ORDER BY created_at DESC LIMIT 1) AS wa_dispatch_recipient,
+                        (SELECT status FROM dispatch_logs WHERE (deal_id = d.id OR deal_id = d.bgn_code) AND channel = 'EMAIL' ORDER BY created_at DESC LIMIT 1) AS email_dispatch_status,
+                        (SELECT created_at FROM dispatch_logs WHERE (deal_id = d.id OR deal_id = d.bgn_code) AND channel = 'EMAIL' ORDER BY created_at DESC LIMIT 1) AS email_dispatch_time,
+                        (SELECT phone_or_email FROM dispatch_logs WHERE (deal_id = d.id OR deal_id = d.bgn_code) AND channel = 'EMAIL' ORDER BY created_at DESC LIMIT 1) AS email_dispatch_recipient
                     FROM deals d
                     JOIN parties b ON d.buyer_id = b.id
                     JOIN parties s ON d.seller_id = s.id
@@ -254,6 +260,55 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(pdf_data)
                 return
+
+            elif path.startswith('/api/deals/') and path.endswith('/dispatch-status'):
+                raw_id = path.split('/')[3]
+                deal_id = re.sub(r'[^a-zA-Z0-9_-]', '', urllib.parse.unquote(raw_id))
+                cur.execute("""
+                    SELECT d.id, COALESCE(d.bgn_code, d.id) as bgn_code, 
+                           b.phone as buyer_phone, s.phone as seller_phone, 
+                           b.email as buyer_email, s.email as seller_email
+                    FROM deals d
+                    JOIN parties b ON d.buyer_id = b.id
+                    JOIN parties s ON d.seller_id = s.id
+                    WHERE d.id = ? OR d.bgn_code = ?
+                """, (deal_id, deal_id))
+                deal_info = cur.fetchone()
+                if not deal_info:
+                    conn.close()
+                    return self.send_error_json("Deal not found", 404)
+
+                real_id = deal_info['id']
+                real_bgn = deal_info['bgn_code']
+
+                cur.execute("""
+                    SELECT channel, status, phone_or_email, created_at, message_preview, recipient_name
+                    FROM dispatch_logs
+                    WHERE deal_id = ? OR deal_id = ?
+                    ORDER BY created_at DESC
+                """, (real_id, real_bgn))
+                logs = [dict(r) for r in cur.fetchall()]
+                conn.close()
+
+                wa_log = next((l for l in logs if l.get('channel') == 'WHATSAPP'), None)
+                email_log = next((l for l in logs if l.get('channel') == 'EMAIL'), None)
+
+                return self.send_json_response({
+                    "deal_id": real_id,
+                    "bgn_code": real_bgn,
+                    "whatsapp": {
+                        "sent": wa_log is not None and wa_log.get('status') in ('SENT', 'DELIVERED'),
+                        "status": "DELIVERED" if (wa_log and wa_log.get('status') in ('SENT', 'DELIVERED')) else (wa_log.get('status') if wa_log else "NOT_SENT"),
+                        "timestamp": wa_log.get('created_at') if wa_log else None,
+                        "recipient": wa_log.get('phone_or_email') if wa_log else None
+                    },
+                    "email": {
+                        "sent": email_log is not None and email_log.get('status') in ('SENT', 'DELIVERED'),
+                        "status": "DELIVERED" if (email_log and email_log.get('status') in ('SENT', 'DELIVERED')) else (email_log.get('status') if email_log else "NOT_SENT"),
+                        "timestamp": email_log.get('created_at') if email_log else None,
+                        "recipient": email_log.get('phone_or_email') if email_log else None
+                    }
+                })
 
             elif path == '/api/whatsapp/status':
                 conn.close()
@@ -488,9 +543,9 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                             'deal_id': deal_dict['id'],
                             'recipient_type': recip_type,
                             'recipient_name': recip_name,
-                            'channel': 'WHATSAPP_AUTO',
+                            'channel': 'WHATSAPP',
                             'phone_or_email': phone,
-                            'message_preview': f"Auto-delivered {filename} with PDF attachment"
+                            'message_preview': f"Direct PDF confirmation delivered: {filename}"
                         }, actor_name=actor_name)
                     except Exception as log_err:
                         print(f"Dispatch log error: {log_err}")
@@ -552,6 +607,100 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 )
                 status_code = 200 if send_res.get('success') else 400
                 return self.send_json_response(send_res, status_code)
+
+            elif path == '/api/dispatch/send-both':
+                deal_id = body.get('deal_id')
+                phone = (body.get('phone') or '').strip()
+                recipient_email = (body.get('email') or body.get('recipient_email') or '').strip()
+                caption = body.get('caption') or body.get('message') or ''
+                subject = body.get('subject') or ''
+                body_text = body.get('body') or ''
+
+                if not deal_id:
+                    return self.send_error_json("deal_id is required", 400)
+
+                conn = get_db_connection()
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT 
+                        d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,
+                        b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station,
+                        b.email AS buyer_email, b.phone AS buyer_phone,
+                        s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
+                        s.email AS seller_email, s.phone AS seller_phone,
+                        p.name AS product_name
+                    FROM deals d
+                    JOIN parties b ON d.buyer_id = b.id
+                    JOIN parties s ON d.seller_id = s.id
+                    JOIN products p ON d.product_id = p.id
+                    WHERE d.id = ? OR d.bgn_code = ?
+                """, (deal_id, deal_id))
+                d_row = cur.fetchone()
+                conn.close()
+
+                if not d_row:
+                    return self.send_error_json("Deal not found", 404)
+
+                deal_dict = dict(d_row)
+                bgn = deal_dict.get('bgn_code') or deal_dict.get('id')
+                filename = f"Bargain_Confirmation_{bgn}.pdf"
+
+                results = {
+                    "success": True,
+                    "deal_id": deal_dict['id'],
+                    "bgn_code": bgn,
+                    "whatsapp": None,
+                    "email": None
+                }
+
+                # 1. Direct WhatsApp Dispatch (Zero external apps opened)
+                if phone:
+                    try:
+                        from app.core.pdf_generator import generate_deal_contract_pdf
+                        from app.core.whatsapp_gateway import send_whatsapp_pdf_document
+                        pdf_bytes = generate_deal_contract_pdf(deal_dict)
+                        if not caption:
+                            caption = f"*BARGAIN CONFIRMATION — GANESH & COMPANY*\nBargain No: {bgn}\nCommodity: {deal_dict.get('product_name')}\nQuantity: {deal_dict.get('quantity_tonnes')} MT\nRate: Rs. {deal_dict.get('rate_per_qtl')}/Qtl + GST"
+                        
+                        wa_res = send_whatsapp_pdf_document(phone, pdf_bytes, filename, caption)
+                        results["whatsapp"] = wa_res
+                        if wa_res.get('success'):
+                            recip_type = 'SELLER' if phone in str(deal_dict.get('seller_phone') or '') else 'BUYER'
+                            recip_name = deal_dict.get('seller_name') if recip_type == 'SELLER' else deal_dict.get('buyer_name')
+                            api_routes.create_dispatch_log({
+                                'deal_id': deal_dict['id'],
+                                'recipient_type': recip_type,
+                                'recipient_name': recip_name,
+                                'channel': 'WHATSAPP',
+                                'phone_or_email': phone,
+                                'message_preview': f"Direct PDF confirmation delivered: {filename}",
+                                'status': 'SENT'
+                            }, actor_name=actor_name)
+                        else:
+                            results["success"] = False
+                    except Exception as wa_err:
+                        results["whatsapp"] = {"success": False, "error": str(wa_err)}
+                        results["success"] = False
+
+                # 2. Direct Email Dispatch (Zero external apps opened)
+                if recipient_email:
+                    try:
+                        from app.core.email_gateway import send_deal_contract_email
+                        em_res = send_deal_contract_email(
+                            deal_dict=deal_dict,
+                            recipient_email=recipient_email,
+                            recipient_name=deal_dict.get('buyer_name') or deal_dict.get('seller_name'),
+                            custom_subject=subject or None,
+                            custom_body=body_text or None
+                        )
+                        results["email"] = em_res
+                        if not em_res.get('success'):
+                            results["success"] = False
+                    except Exception as em_err:
+                        results["email"] = {"success": False, "error": str(em_err)}
+                        results["success"] = False
+
+                return self.send_json_response(results)
 
             elif path == '/api/test/run-worked-example':
                 test_results = self.execute_worked_example_acceptance_test()

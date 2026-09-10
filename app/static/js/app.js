@@ -441,7 +441,17 @@ const app = {
               <td class="mono" style="font-weight: 600;">${qty}</td>
               <td class="rate-figure">${rate}</td>
               <td>
-                <span class="badge ${badgeClass}">${d.status}</span>
+                <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                  <span class="badge ${badgeClass}">${d.status}</span>
+                  <div style="display: flex; gap: 3px; align-items: center;" title="Direct Dispatch Delivery Status">
+                    <span class="badge" style="font-size: 9.5px; padding: 1px 4px; ${d.wa_dispatch_status === 'SENT' || d.wa_dispatch_status === 'DELIVERED' ? 'background: rgba(16, 185, 129, 0.18); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' : 'background: rgba(148,163,184,0.12); color: #94A3B8;'}">
+                      WA ${d.wa_dispatch_status === 'SENT' || d.wa_dispatch_status === 'DELIVERED' ? '✓✓' : '—'}
+                    </span>
+                    <span class="badge" style="font-size: 9.5px; padding: 1px 4px; ${d.email_dispatch_status === 'SENT' || d.email_dispatch_status === 'DELIVERED' ? 'background: rgba(16, 185, 129, 0.18); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' : 'background: rgba(148,163,184,0.12); color: #94A3B8;'}">
+                      Mail ${d.email_dispatch_status === 'SENT' || d.email_dispatch_status === 'DELIVERED' ? '✓' : '—'}
+                    </span>
+                  </div>
+                </div>
               </td>
               <td style="text-align: right;">
                 <div style="display: flex; justify-content: flex-end; gap: 6px;">
@@ -561,7 +571,17 @@ const app = {
           <td class="mono" style="font-weight: 600;">${qtyStr}</td>
           <td class="rate-figure">${rateStr}</td>
           <td>
-            <span class="badge ${badgeClass}">${d.status}</span>
+            <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+              <span class="badge ${badgeClass}">${d.status}</span>
+              <div style="display: flex; gap: 3px; align-items: center;" title="Direct Dispatch Delivery Status">
+                <span class="badge" style="font-size: 9.5px; padding: 1px 4px; ${d.wa_dispatch_status === 'SENT' || d.wa_dispatch_status === 'DELIVERED' ? 'background: rgba(16, 185, 129, 0.18); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' : 'background: rgba(148,163,184,0.12); color: #94A3B8;'}">
+                  WA ${d.wa_dispatch_status === 'SENT' || d.wa_dispatch_status === 'DELIVERED' ? '✓✓' : '—'}
+                </span>
+                <span class="badge" style="font-size: 9.5px; padding: 1px 4px; ${d.email_dispatch_status === 'SENT' || d.email_dispatch_status === 'DELIVERED' ? 'background: rgba(16, 185, 129, 0.18); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' : 'background: rgba(148,163,184,0.12); color: #94A3B8;'}">
+                  Mail ${d.email_dispatch_status === 'SENT' || d.email_dispatch_status === 'DELIVERED' ? '✓' : '—'}
+                </span>
+              </div>
+            </div>
           </td>
           <td style="text-align: center;">${buyerCheck}</td>
           <td style="text-align: center;">${sellerCheck}</td>
@@ -1029,6 +1049,7 @@ Mob. 94619-40113 / 94619-40114 / 94619-40115
 
     if (window.lucide) lucide.createIcons();
     this.checkWhatsAppBotStatus();
+    this.recheckDispatchStatus(deal.id, false);
   },
 
   switchDispatchTab(tab) {
@@ -1044,60 +1065,185 @@ Mob. 94619-40113 / 94619-40114 / 94619-40115
     if (emailPane) emailPane.style.display = tab === 'email' ? 'flex' : 'none';
   },
 
+  async recheckDispatchStatus(dealId, showToast = true) {
+    if (!dealId) return;
+    const icon = document.getElementById('recheck-both-icon');
+    if (icon) icon.style.animation = 'spin 1s linear infinite';
+
+    try {
+      const resp = await fetch(`/api/deals/${dealId}/dispatch-status`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      const waPill = document.getElementById('both-wa-status-pill');
+      const emailPill = document.getElementById('both-email-status-pill');
+
+      // WhatsApp status
+      if (waPill) {
+        if (data.whatsapp?.delivered || data.whatsapp?.status === 'DELIVERED' || data.whatsapp?.status === 'SENT') {
+          const timeStr = data.whatsapp.timestamp ? this.formatTimeOnly(data.whatsapp.timestamp) : '';
+          waPill.style.background = 'rgba(16, 185, 129, 0.2)';
+          waPill.style.color = '#10B981';
+          waPill.innerHTML = `Delivered ✓✓ ${timeStr ? `(${timeStr})` : ''}`;
+        } else {
+          waPill.style.background = 'rgba(148, 163, 184, 0.15)';
+          waPill.style.color = '#94A3B8';
+          waPill.innerHTML = `Not Sent`;
+        }
+      }
+
+      // Email status
+      if (emailPill) {
+        if (data.email?.delivered || data.email?.status === 'DELIVERED' || data.email?.status === 'SENT') {
+          const timeStr = data.email.timestamp ? this.formatTimeOnly(data.email.timestamp) : '';
+          emailPill.style.background = 'rgba(16, 185, 129, 0.2)';
+          emailPill.style.color = '#10B981';
+          emailPill.innerHTML = `Delivered ✓ ${timeStr ? `(${timeStr})` : ''}`;
+        } else {
+          emailPill.style.background = 'rgba(148, 163, 184, 0.15)';
+          emailPill.style.color = '#94A3B8';
+          emailPill.innerHTML = `Not Sent`;
+        }
+      }
+
+      // Update in this.deals if present
+      const deal = this.deals.find(d => d.id === dealId || d.bgn_code === dealId);
+      if (deal) {
+        deal.wa_dispatch_status = data.whatsapp?.status;
+        deal.wa_dispatch_time = data.whatsapp?.timestamp;
+        deal.email_dispatch_status = data.email?.status;
+        deal.email_dispatch_time = data.email?.timestamp;
+      }
+
+      if (showToast) {
+        this.showToast('Delivery status updated from server!', 'info', 2500);
+      }
+    } catch (e) {
+      console.warn('Recheck status error:', e);
+      if (showToast) this.showToast('Could not fetch status update', 'error');
+    } finally {
+      if (icon) {
+        setTimeout(() => { icon.style.animation = ''; }, 500);
+      }
+    }
+  },
+
+  formatTimeOnly(isoStr) {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return isoStr.substring(11, 16);
+      return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch {
+      return '';
+    }
+  },
+
   async sendPdfToBoth() {
     if (!this.selectedDealForDispatch) return;
     const deal = this.selectedDealForDispatch;
     const bgn = deal.bgn_code || deal.id;
     const phoneInput = document.getElementById('dispatch-both-phone')?.value || '';
-    const phoneDigits = phoneInput.replace(/[^0-9]/g, '');
     const emailTo = document.getElementById('dispatch-both-email')?.value || '';
-    const pdfName = `Bargain_Confirmation_${bgn}.pdf`;
-
-    // 1. Download official PDF to local computer
-    this.downloadContractPdf(deal.id);
-
-    // 2. Launch WhatsApp Web with pre-filled message
     const waText = document.getElementById('both-preview-box')?.textContent || '';
-    if (phoneDigits) {
-      const waUrl = `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${encodeURIComponent(waText)}`;
-      window.open(waUrl, '_blank');
+    const emailSubject = `Official Bargain Confirmation [${bgn}] (System Generated PDF) - Ganesh & Company`;
+
+    const btn = document.getElementById('btn-dispatch-both-action');
+    const label = document.getElementById('btn-dispatch-both-label');
+    const waPill = document.getElementById('both-wa-status-pill');
+    const emailPill = document.getElementById('both-email-status-pill');
+
+    if (!phoneInput && !emailTo) {
+      this.showToast('Please specify a phone number or email address', 'error');
+      return;
     }
 
-    // 3. Launch Email Client (mailto:)
-    if (emailTo) {
-      const subject = encodeURIComponent(`Official Bargain Confirmation [${bgn}] (System Generated PDF) - Ganesh & Company`);
-      const body = encodeURIComponent(
-`Dear Sir,
-
-Please find confirmed the following bargain contract canvassed by Ganesh & Company:
-
-Bargain ID: ${bgn}
-Commodity: ${deal.product_name}
-Quantity: ${deal.quantity_tonnes || (deal.quantity_qtl * 0.1)} MT (${deal.quantity_qtl} Quintals)
-Rate: ₹${Math.round(deal.rate_per_qtl)} + GST per quintal
-Seller: ${deal.seller_name}
-Buyer: ${deal.buyer_name}
-Delivery Condition: ${deal.delivery_condition || 'Ex-Mill Lifting'}
-
-Attached Document: ${pdfName}
-*** NOTE: This is a system-generated PDF document and does not require a physical signature. All transactions subject to Sri Ganganagar Jurisdiction. ***
-
-Yours faithfully,
-Ganesh & Company, Sri Ganganagar
-Phone: 94619-40113 / 94619-40114`
-      );
-      const mailtoLink = document.createElement('a');
-      mailtoLink.href = `mailto:${emailTo}?subject=${subject}&body=${body}`;
-      mailtoLink.target = '_blank';
-      mailtoLink.click();
+    // Indicate sending state
+    if (btn) btn.disabled = true;
+    if (label) label.innerHTML = `<span class="spin" style="display:inline-block; margin-right:6px;">⏳</span> Sending Directly in Background...`;
+    
+    if (phoneInput && waPill) {
+      waPill.style.background = 'rgba(245, 158, 11, 0.15)';
+      waPill.style.color = '#F59E0B';
+      waPill.innerHTML = `Sending...`;
+    }
+    if (emailTo && emailPill) {
+      emailPill.style.background = 'rgba(245, 158, 11, 0.15)';
+      emailPill.style.color = '#F59E0B';
+      emailPill.innerHTML = `Sending...`;
     }
 
-    // 4. Log both channels in backend database
-    await this.logDispatchEvent('WHATSAPP', phoneInput);
-    await this.logDispatchEvent('EMAIL', emailTo);
+    try {
+      const resp = await fetch('/api/dispatch/send-both', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deal_id: deal.id,
+          phone: phoneInput,
+          email: emailTo,
+          caption: waText,
+          subject: emailSubject,
+          body: waText
+        })
+      });
 
-    this.showToast(`✓ Official PDF downloaded & dispatched to WhatsApp and Email`, 'success', 5000);
-    document.getElementById('modal-dispatch')?.classList.remove('active');
+      const res = await resp.json();
+
+      let waOk = res.whatsapp?.success;
+      let emailOk = res.email?.success;
+
+      // Update pills
+      if (waPill) {
+        if (waOk) {
+          waPill.style.background = 'rgba(16, 185, 129, 0.2)';
+          waPill.style.color = '#10B981';
+          waPill.innerHTML = `Delivered ✓✓ (Just now)`;
+        } else if (res.whatsapp?.error) {
+          waPill.style.background = 'rgba(239, 68, 68, 0.2)';
+          waPill.style.color = '#EF4444';
+          waPill.innerHTML = `Failed`;
+        } else if (!phoneInput) {
+          waPill.innerHTML = `Not Provided`;
+        }
+      }
+
+      if (emailPill) {
+        if (emailOk) {
+          emailPill.style.background = 'rgba(16, 185, 129, 0.2)';
+          emailPill.style.color = '#10B981';
+          emailPill.innerHTML = `Delivered ✓ (Just now)`;
+        } else if (res.email?.error) {
+          emailPill.style.background = 'rgba(239, 68, 68, 0.2)';
+          emailPill.style.color = '#EF4444';
+          emailPill.innerHTML = `Failed`;
+        } else if (!emailTo) {
+          emailPill.innerHTML = `Not Provided`;
+        }
+      }
+
+      if (waOk && emailOk) {
+        this.showToast(`✓ Both WhatsApp (✓✓) & Email (✓) delivered directly!`, 'success', 5000);
+      } else if (waOk) {
+        this.showToast(`✓ WhatsApp delivered directly (✓✓)!`, 'success', 4000);
+      } else if (emailOk) {
+        this.showToast(`✓ Email delivered directly (✓)!`, 'success', 4000);
+      } else {
+        const errMsg = res.whatsapp?.error || res.email?.error || 'Dispatch encountered issues';
+        this.showToast(`Dispatch note: ${errMsg}`, 'error', 5000);
+      }
+
+      // Recheck from DB to get official timestamps
+      await this.recheckDispatchStatus(deal.id, false);
+      if (typeof this.loadDeals === 'function') {
+        await this.loadDeals();
+      }
+    } catch (err) {
+      console.error('Send direct error:', err);
+      this.showToast(`Error sending: ${err.message}`, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+      if (label) label.innerHTML = `⚡ Direct Send to Both (Zero Apps Opened)`;
+    }
   },
 
   async sharePdfDirectly() {
@@ -2357,6 +2503,12 @@ Phone: 94619-40113 / 94619-40114`
     // Send PDF to Both (WhatsApp + Email) Action
     document.getElementById('btn-dispatch-both-action')?.addEventListener('click', () => {
       this.sendPdfToBoth();
+    });
+
+    document.getElementById('btn-recheck-both-status')?.addEventListener('click', async () => {
+      if (this.selectedDealForDispatch) {
+        await this.recheckDispatchStatus(this.selectedDealForDispatch.id, true);
+      }
     });
 
     document.getElementById('btn-native-share-both')?.addEventListener('click', () => {
