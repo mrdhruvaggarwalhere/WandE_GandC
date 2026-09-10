@@ -389,10 +389,13 @@ def send_deal_contract_email(
         try:
             conn = get_db_connection(db_path)
             cur = conn.cursor()
+            import uuid
+            log_id = f"LOG-{uuid.uuid4().hex[:8].upper()}"
             cur.execute("""
-                INSERT INTO dispatch_logs (deal_id, recipient_type, recipient_name, channel, phone_or_email, message_preview, status)
-                VALUES (?, ?, ?, 'EMAIL', ?, ?, 'SENT')
+                INSERT INTO dispatch_logs (id, deal_id, recipient_type, recipient_name, channel, phone_or_email, message_preview, status, created_at)
+                VALUES (?, ?, ?, ?, 'EMAIL', ?, ?, 'SENT', datetime('now'))
             """, (
+                log_id,
                 deal_dict.get('id'),
                 recip_type,
                 recip_name or recip,
