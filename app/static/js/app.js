@@ -1350,6 +1350,8 @@ Phone: 94619-40113 / 94619-40114`
             presetSelect.value = 'standard';
           } else if (cfg.smtp_host === 'mail.rediffmailpro.com' && (Number(cfg.smtp_port) === 465 || Number(cfg.smtp_port) === 587)) {
             presetSelect.value = 'pro';
+          } else if (cfg.smtp_host === 'smtp.gmail.com') {
+            presetSelect.value = 'gmail';
           } else {
             presetSelect.value = 'custom';
           }
@@ -2476,6 +2478,9 @@ Phone: 94619-40113 / 94619-40114`
       } else if (preset === 'pro') {
         if (hostInput) hostInput.value = 'mail.rediffmailpro.com';
         if (portInput) portInput.value = '465';
+      } else if (preset === 'gmail') {
+        if (hostInput) hostInput.value = 'smtp.gmail.com';
+        if (portInput) portInput.value = '587';
       }
     });
 
