@@ -36,22 +36,20 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
     cur.execute("SELECT COALESCE(SUM(quantity_tonnes), 0) FROM deals WHERE status != 'CANCELLED' AND COALESCE(is_deleted, 0) = 0")
     active_traded_volume_mt = float(cur.fetchone()[0])
 
-    # Pending Confirmations (Unconfirmed by either party or status PENDING)
+    # Today's deals & Today's Volume
+    cur.execute("SELECT COUNT(*), COALESCE(SUM(quantity_tonnes), 0) FROM deals WHERE deal_date = ? AND status != 'CANCELLED' AND COALESCE(is_deleted, 0) = 0", (today_str,))
+    today_row = cur.fetchone()
+    todays_deals_count = today_row[0]
+    todays_traded_volume_mt = float(today_row[1])
+
+    # Pending Confirmations (Unconfirmed by either party or status PENDING or reconfirmation required)
     cur.execute("""
         SELECT COUNT(*) FROM deals 
         WHERE status != 'CANCELLED' 
           AND COALESCE(is_deleted, 0) = 0 
-          AND (status = 'PENDING' OR is_buyer_confirmed = 0 OR is_seller_confirmed = 0)
+          AND (status IN ('PENDING', 'UPDATED') OR is_buyer_confirmed = 0 OR is_seller_confirmed = 0 OR COALESCE(reconfirmation_required, 0) = 1)
     """)
     pending_confirmations_count = cur.fetchone()[0]
-
-    # Today's deals
-    cur.execute("SELECT COUNT(*) FROM deals WHERE deal_date = ? AND COALESCE(is_deleted, 0) = 0", (today_str,))
-    todays_deals_exact = cur.fetchone()[0]
-    # Fallback to recent if current date has 0
-    todays_deals_count = todays_deals_exact if todays_deals_exact > 0 else total_active_deals
-    yesterdays_deals_count = max(1, todays_deals_count - 1)
-    deals_vs_yesterday_pct = round(((todays_deals_count - yesterdays_deals_count) / yesterdays_deals_count) * 100, 1) if yesterdays_deals_count > 0 else 0.0
 
     # Delivery status counts
     cur.execute("SELECT COUNT(*) FROM deals WHERE status != 'CANCELLED' AND delivery_date = ? AND COALESCE(is_deleted, 0) = 0", (today_str,))
@@ -124,6 +122,9 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
             s.id AS seller_id, s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station, s.phone AS seller_phone,
             p.id AS product_id, p.name AS product_name,
             d.quantity_qtl, d.quantity_tonnes, d.rate_per_qtl,
+            COALESCE(d.seller_rate, d.rate_per_qtl) AS seller_rate,
+            COALESCE(d.buyer_rate, d.rate_per_qtl) AS buyer_rate,
+            COALESCE(d.reconfirmation_required, 0) AS reconfirmation_required,
             d.advance_payment_date, d.delivery_condition,
             COALESCE(d.is_buyer_confirmed, 1) AS is_buyer_confirmed,
             COALESCE(d.is_seller_confirmed, 1) AS is_seller_confirmed,
@@ -143,8 +144,7 @@ def get_dashboard_metrics(db_path: str = DB_PATH, filters: Optional[Dict[str, An
     return {
         'total_active_deals': total_active_deals,
         'todays_deals_count': todays_deals_count,
-        'yesterdays_deals_count': yesterdays_deals_count,
-        'deals_vs_yesterday_pct': deals_vs_yesterday_pct,
+        'todays_traded_volume_mt': todays_traded_volume_mt,
         'active_traded_volume_mt': active_traded_volume_mt,
         'active_parties_count': active_parties_count,
         'pending_confirmations_count': pending_confirmations_count,
@@ -175,7 +175,14 @@ def create_new_deal(data: Dict[str, Any], actor_name: str = "Broker User", actor
     buyer_id = data.get('buyer_id')
     product_id = data.get('product_id')
     qty_qtl = float(data.get('quantity_qtl', 0))
-    rate_per_qtl = float(data.get('rate_per_qtl', 0))
+    seller_rate = float(data.get('seller_rate') or data.get('rate_per_qtl') or 0.0)
+    buyer_rate = float(data.get('buyer_rate') or (data.get('rate_per_qtl') if 'rate_per_qtl' in data and 'buyer_rate' not in data else seller_rate))
+    if seller_rate <= 0:
+        seller_rate = float(data.get('rate_per_qtl', 0))
+    if buyer_rate <= 0:
+        buyer_rate = seller_rate
+    rate_per_qtl = seller_rate
+
     delivery_date = data.get('delivery_date') or deal_date
     gst_applicable = int(data.get('gst_applicable', 1))
     gst_percentage = float(data.get('gst_percentage', 5.0))
@@ -191,9 +198,9 @@ def create_new_deal(data: Dict[str, Any], actor_name: str = "Broker User", actor
     if qty_qtl <= 0:
         conn.close()
         raise ValueError("Quantity must be greater than 0.")
-    if rate_per_qtl <= 0:
+    if seller_rate <= 0 or buyer_rate <= 0:
         conn.close()
-        raise ValueError("Rate per quintal must be greater than 0.")
+        raise ValueError("Seller Rate and Buyer Rate must be greater than 0.")
 
     # Calculate quantities & brokerage
     qty_tonnes = float(convert_quintals_to_tonnes(qty_qtl))
@@ -233,24 +240,24 @@ def create_new_deal(data: Dict[str, Any], actor_name: str = "Broker User", actor
             original_bill_seller_id, final_bill_buyer_id, final_billing_rate_qtl, final_gst_treatment,
             status, approval_status, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', 'PENDING', ?, ?)
-    """, (chain_id, deal_id, product_id, qty_qtl, qty_qtl, seller_id, buyer_id, rate_per_qtl, 'PLUS_GST', now_iso, now_iso))
+    """, (chain_id, deal_id, product_id, qty_qtl, qty_qtl, seller_id, buyer_id, buyer_rate, 'PLUS_GST', now_iso, now_iso))
 
     # 2. Insert Deal
     cur.execute("""
         INSERT INTO deals (
             id, bgn_code, chain_id, link_sequence, parent_deal_id, deal_date, seller_id, buyer_id, product_id,
-            quantity_qtl, quantity_tonnes, rate_per_qtl, authorized_selling_rate_qtl,
+            quantity_qtl, quantity_tonnes, rate_per_qtl, seller_rate, buyer_rate, authorized_selling_rate_qtl,
             gst_applicable, gst_percentage, is_rate_inclusive_gst, delivery_date,
-            advance_payment_date, delivery_condition, is_buyer_confirmed, is_seller_confirmed,
+            advance_payment_date, delivery_condition, is_buyer_confirmed, is_seller_confirmed, reconfirmation_required,
             buyer_brokerage_rate_per_tonne, seller_brokerage_rate_per_tonne,
             buyer_brokerage_amount, seller_brokerage_amount, total_brokerage_amount,
             price_diff_per_qtl, price_diff_profit, delivery_status, status,
             is_brokerage_overridden, brokerage_override_reason, notes, is_deleted,
             created_by, created_at, updated_at
-        ) VALUES (?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0, 0.0, 'PENDING', 'CONFIRMED', ?, ?, ?, 0, ?, ?, ?)
+        ) VALUES (?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, 0.0, 0.0, 'PENDING', 'CONFIRMED', ?, ?, ?, 0, ?, ?, ?)
     """, (
         deal_id, bgn_code, chain_id, deal_date, seller_id, buyer_id, product_id,
-        qty_qtl, qty_tonnes, rate_per_qtl,
+        qty_qtl, qty_tonnes, rate_per_qtl, seller_rate, buyer_rate,
         gst_applicable, gst_percentage, is_rate_inclusive, delivery_date,
         advance_payment_date, delivery_condition, is_buyer_confirmed, is_seller_confirmed,
         b_rate, s_rate, b_brok_amt, s_brok_amt, tot_brok_amt,
@@ -840,14 +847,176 @@ def purge_deal_permanent(deal_id: str, actor_name: str, actor_role: str, db_path
     conn.close()
     return {'deal_id': real_deal_id, 'purged': True}
 
-def get_market_rates(db_path: str = DB_PATH) -> List[Dict[str, Any]]:
-    """Returns real-time commodity benchmark rates."""
+def bulk_soft_delete_deals(deal_ids: List[str], actor_name: str, actor_role: str, db_path: str = None) -> Dict[str, Any]:
+    """Soft-deletes multiple deals into the Recycle Bin."""
     conn = get_db_connection(db_path)
     cur = conn.cursor()
-    cur.execute("SELECT * FROM market_rates ORDER BY benchmark_rate_qtl DESC")
-    rates = [dict(r) for r in cur.fetchall()]
+    deleted_ids = []
+    now_iso = datetime.now().isoformat()
+
+    for did in deal_ids:
+        cur.execute("SELECT id, bgn_code FROM deals WHERE id = ? OR bgn_code = ?", (did, did))
+        row = cur.fetchone()
+        if row:
+            real_id = row['id']
+            cur.execute("UPDATE deals SET is_deleted = 1, deleted_at = ?, updated_at = ? WHERE id = ?", (now_iso, now_iso, real_id))
+            log_audit(conn, "deals", real_id, "TRASH", actor_name, actor_role, {"is_deleted": 0}, {"is_deleted": 1, "deleted_at": now_iso}, "Bulk soft deleted")
+            deleted_ids.append(real_id)
+
+    conn.commit()
     conn.close()
-    return rates
+    return {'count': len(deleted_ids), 'deleted_count': len(deleted_ids), 'deleted_ids': deleted_ids}
+
+def bulk_restore_deals(deal_ids: List[str], actor_name: str, actor_role: str, db_path: str = None) -> Dict[str, Any]:
+    """Restores multiple soft-deleted deals from the Recycle Bin."""
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+    restored_ids = []
+    now_iso = datetime.now().isoformat()
+
+    for did in deal_ids:
+        cur.execute("SELECT id, bgn_code FROM deals WHERE id = ? OR bgn_code = ?", (did, did))
+        row = cur.fetchone()
+        if row:
+            real_id = row['id']
+            cur.execute("UPDATE deals SET is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?", (now_iso, real_id))
+            log_audit(conn, "deals", real_id, "RESTORE", actor_name, actor_role, {"is_deleted": 1}, {"is_deleted": 0}, "Bulk restored from trash")
+            restored_ids.append(real_id)
+
+    conn.commit()
+    conn.close()
+    return {'count': len(restored_ids), 'restored_count': len(restored_ids), 'restored_ids': restored_ids}
+
+def update_deal(deal_id: str, data: Dict[str, Any], actor_name: str = "Broker User", actor_role: str = "BROKER", db_path: str = None) -> Dict[str, Any]:
+    """
+    Updates an existing Bargain Deal in place.
+    Preserves exact same Bargain ID without creating duplicates.
+    Maintains rate confidentiality and marks reconfirmation required on commercial changes.
+    """
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM deals WHERE id = ? OR bgn_code = ?", (deal_id, deal_id))
+    deal = cur.fetchone()
+    if not deal:
+        conn.close()
+        raise ValueError(f"Deal {deal_id} not found.")
+
+    real_id = deal['id']
+    old_deal = dict(deal)
+
+    deal_date = data.get('deal_date') or old_deal['deal_date']
+    seller_id = data.get('seller_id') or old_deal['seller_id']
+    buyer_id = data.get('buyer_id') or old_deal['buyer_id']
+    product_id = data.get('product_id') or old_deal['product_id']
+    qty_qtl = float(data.get('quantity_qtl') if data.get('quantity_qtl') is not None else old_deal['quantity_qtl'])
+    
+    # Dual-Rate resolution
+    old_seller_rate = float(old_deal.get('seller_rate') or old_deal.get('rate_per_qtl') or 0.0)
+    old_buyer_rate = float(old_deal.get('buyer_rate') or old_deal.get('rate_per_qtl') or old_seller_rate)
+
+    seller_rate = float(data.get('seller_rate') if data.get('seller_rate') is not None else (data.get('rate_per_qtl') if data.get('rate_per_qtl') is not None else old_seller_rate))
+    buyer_rate = float(data.get('buyer_rate') if data.get('buyer_rate') is not None else (seller_rate if 'seller_rate' in data and 'buyer_rate' not in data else old_buyer_rate))
+    if seller_rate <= 0:
+        seller_rate = old_seller_rate
+    if buyer_rate <= 0:
+        buyer_rate = seller_rate
+    rate_per_qtl = seller_rate
+
+    qty_tonnes = float(convert_quintals_to_tonnes(qty_qtl))
+    delivery_date = data.get('delivery_date') or old_deal.get('delivery_date') or deal_date
+    advance_payment_date = data.get('advance_payment_date') or old_deal.get('advance_payment_date') or deal_date
+    delivery_condition = data.get('delivery_condition') if data.get('delivery_condition') is not None else (old_deal.get('delivery_condition') or '')
+    notes = data.get('notes') if data.get('notes') is not None else (old_deal.get('notes') or '')
+    gst_applicable = int(data.get('gst_applicable', old_deal.get('gst_applicable', 1)))
+    gst_percentage = float(data.get('gst_percentage', old_deal.get('gst_percentage', 5.0)))
+    is_rate_inclusive = int(data.get('is_rate_inclusive_gst', old_deal.get('is_rate_inclusive_gst', 0)))
+
+    # Commercial change detection
+    significant_change = (
+        old_deal['seller_id'] != seller_id or
+        old_deal['buyer_id'] != buyer_id or
+        old_deal['product_id'] != product_id or
+        abs(float(old_deal['quantity_qtl']) - qty_qtl) > 0.001 or
+        abs(old_seller_rate - seller_rate) > 0.001 or
+        abs(old_buyer_rate - buyer_rate) > 0.001 or
+        (old_deal.get('delivery_condition') or '') != delivery_condition or
+        (old_deal.get('advance_payment_date') or '') != advance_payment_date
+    )
+
+    reconfirmation_required = int(old_deal.get('reconfirmation_required') or 0)
+    new_status = data.get('status') or old_deal['status']
+
+    if significant_change:
+        reconfirmation_required = 1
+
+    now_iso = datetime.now().isoformat()
+
+    cur.execute("""
+        UPDATE deals SET
+            deal_date = ?,
+            seller_id = ?,
+            buyer_id = ?,
+            product_id = ?,
+            quantity_qtl = ?,
+            quantity_tonnes = ?,
+            rate_per_qtl = ?,
+            seller_rate = ?,
+            buyer_rate = ?,
+            gst_applicable = ?,
+            gst_percentage = ?,
+            is_rate_inclusive_gst = ?,
+            delivery_date = ?,
+            advance_payment_date = ?,
+            delivery_condition = ?,
+            status = ?,
+            reconfirmation_required = ?,
+            notes = ?,
+            updated_at = ?
+        WHERE id = ?
+    """, (
+        deal_date, seller_id, buyer_id, product_id,
+        qty_qtl, qty_tonnes, rate_per_qtl, seller_rate, buyer_rate,
+        gst_applicable, gst_percentage, is_rate_inclusive,
+        delivery_date, advance_payment_date, delivery_condition,
+        new_status, reconfirmation_required, notes,
+        now_iso, real_id
+    ))
+
+    # If root deal of chain, update chain record
+    if old_deal.get('link_sequence') == 1 and old_deal.get('chain_id'):
+        cur.execute("""
+            UPDATE deal_chains SET
+                product_id = ?,
+                initial_quantity_qtl = ?,
+                remaining_unresold_quantity_qtl = ?,
+                original_bill_seller_id = ?,
+                final_bill_buyer_id = ?,
+                final_billing_rate_qtl = ?,
+                updated_at = ?
+            WHERE id = ?
+        """, (product_id, qty_qtl, qty_qtl, seller_id, buyer_id, buyer_rate, now_iso, old_deal['chain_id']))
+
+    log_audit(conn, "deals", real_id, "UPDATE", actor_name, actor_role, old_deal, {
+        "seller_rate": seller_rate,
+        "buyer_rate": buyer_rate,
+        "quantity_qtl": qty_qtl,
+        "reconfirmation_required": reconfirmation_required,
+        "status": new_status
+    }, "Updated bargain terms")
+
+    conn.commit()
+    conn.close()
+
+    return {
+        'id': real_id,
+        'bgn_code': old_deal.get('bgn_code') or real_id,
+        'seller_rate': seller_rate,
+        'buyer_rate': buyer_rate,
+        'status': new_status,
+        'reconfirmation_required': reconfirmation_required,
+        'updated_at': now_iso
+    }
 
 def get_dispatch_logs(db_path: str = DB_PATH) -> List[Dict[str, Any]]:
     """Returns recent communication dispatch logs."""

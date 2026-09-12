@@ -9,16 +9,20 @@ import os
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "brokerage.db")
+DB_PATH = os.environ.get("DATABASE_PATH") or os.environ.get("DB_PATH") or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "brokerage.db")
 
-def get_db_connection(db_path: str = DB_PATH) -> sqlite3.Connection:
+def get_db_connection(db_path: str = None) -> sqlite3.Connection:
+    if db_path is None:
+        db_path = DB_PATH
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
-def init_db(db_path: str = DB_PATH):
-    """Initializes normalized database tables and indexes."""
+def init_db(db_path: str = None):
+    """Initializes normalized database tables, migrations, and indexes."""
+    if db_path is None:
+        db_path = DB_PATH
     conn = get_db_connection(db_path)
     cur = conn.cursor()
 
@@ -113,6 +117,8 @@ def init_db(db_path: str = DB_PATH):
         quantity_qtl REAL NOT NULL,
         quantity_tonnes REAL NOT NULL,
         rate_per_qtl REAL NOT NULL,
+        seller_rate REAL DEFAULT 0.0,
+        buyer_rate REAL DEFAULT 0.0,
         authorized_selling_rate_qtl REAL DEFAULT 0.0,
         gst_applicable INTEGER DEFAULT 1,
         gst_percentage REAL DEFAULT 5.0,
@@ -122,6 +128,7 @@ def init_db(db_path: str = DB_PATH):
         delivery_condition TEXT,
         is_buyer_confirmed INTEGER DEFAULT 1,
         is_seller_confirmed INTEGER DEFAULT 1,
+        reconfirmation_required INTEGER DEFAULT 0,
         buyer_brokerage_rate_per_tonne REAL DEFAULT 0.0,
         seller_brokerage_rate_per_tonne REAL DEFAULT 0.0,
         buyer_brokerage_amount REAL DEFAULT 0.0,
@@ -130,7 +137,7 @@ def init_db(db_path: str = DB_PATH):
         price_diff_per_qtl REAL DEFAULT 0.0,
         price_diff_profit REAL DEFAULT 0.0,
         delivery_status TEXT DEFAULT 'PENDING' CHECK(delivery_status IN ('PENDING', 'DELIVERED', 'OVERDUE')),
-        status TEXT DEFAULT 'CONFIRMED' CHECK(status IN ('DRAFT', 'PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED')),
+        status TEXT DEFAULT 'CONFIRMED' CHECK(status IN ('DRAFT', 'PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'UPDATED')),
         is_brokerage_overridden INTEGER DEFAULT 0,
         brokerage_override_reason TEXT,
         notes TEXT,
@@ -146,19 +153,6 @@ def init_db(db_path: str = DB_PATH):
         FOREIGN KEY (product_id) REFERENCES products(id)
     );
 
-    -- Market Commodity Benchmark Rates
-    CREATE TABLE IF NOT EXISTS market_rates (
-        id TEXT PRIMARY KEY,
-        commodity_name TEXT NOT NULL,
-        mandi_station TEXT NOT NULL,
-        benchmark_rate_qtl REAL NOT NULL,
-        change_today REAL DEFAULT 0.0,
-        high_rate REAL,
-        low_rate REAL,
-        unit TEXT DEFAULT 'QUINTAL',
-        updated_at TEXT NOT NULL
-    );
-
     -- Communication & Dispatch Logs (WhatsApp / Email)
     CREATE TABLE IF NOT EXISTS dispatch_logs (
         id TEXT PRIMARY KEY,
@@ -168,7 +162,7 @@ def init_db(db_path: str = DB_PATH):
         channel TEXT NOT NULL CHECK(channel IN ('WHATSAPP', 'EMAIL')),
         phone_or_email TEXT,
         message_preview TEXT,
-        status TEXT DEFAULT 'SENT' CHECK(status IN ('SENT', 'FAILED', 'PENDING')),
+        status TEXT DEFAULT 'SENT' CHECK(status IN ('SENT', 'FAILED', 'PENDING', 'OPENED', 'DELIVERED')),
         sent_by TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY (deal_id) REFERENCES deals(id)
@@ -281,6 +275,34 @@ def init_db(db_path: str = DB_PATH):
             cur.execute(f"ALTER TABLE parties ADD COLUMN {col} TEXT")
         except Exception:
             pass
+
+    # Migration checks for existing deals table (Dual-Rate: seller_rate & buyer_rate)
+    cur.execute("PRAGMA table_info(deals)")
+    existing_deal_cols = [r['name'] for r in cur.fetchall()]
+
+    if 'seller_rate' not in existing_deal_cols:
+        try:
+            cur.execute("ALTER TABLE deals ADD COLUMN seller_rate REAL DEFAULT 0.0")
+        except Exception:
+            pass
+    if 'buyer_rate' not in existing_deal_cols:
+        try:
+            cur.execute("ALTER TABLE deals ADD COLUMN buyer_rate REAL DEFAULT 0.0")
+        except Exception:
+            pass
+    if 'reconfirmation_required' not in existing_deal_cols:
+        try:
+            cur.execute("ALTER TABLE deals ADD COLUMN reconfirmation_required INTEGER DEFAULT 0")
+        except Exception:
+            pass
+
+    # Safe backfill for pre-existing deals: seller_rate & buyer_rate = rate_per_qtl
+    try:
+        cur.execute("UPDATE deals SET seller_rate = rate_per_qtl WHERE seller_rate IS NULL OR seller_rate = 0.0")
+        cur.execute("UPDATE deals SET buyer_rate = rate_per_qtl WHERE buyer_rate IS NULL OR buyer_rate = 0.0")
+        cur.execute("UPDATE deals SET reconfirmation_required = 0 WHERE reconfirmation_required IS NULL")
+    except Exception:
+        pass
 
     conn.commit()
     conn.close()

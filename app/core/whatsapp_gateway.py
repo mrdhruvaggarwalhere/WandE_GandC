@@ -233,3 +233,46 @@ def send_whatsapp_pdf_document(
         'status': 'UNSUPPORTED_PROVIDER',
         'message': f"Provider {provider} not supported."
     }
+
+def format_whatsapp_bargain_message(deal: Dict[str, Any], role: str = 'BUYER', base_url: str = '') -> str:
+    """Formats a role-specific WhatsApp bargain confirmation preserving confidential rate isolation."""
+    bgn = deal.get('bgn_code') or deal.get('id') or 'BGN-001'
+    deal_date = str(deal.get('deal_date') or '')
+    seller_name = deal.get('seller_name', 'Seller')
+    buyer_name = deal.get('buyer_name', 'Buyer')
+    seller_station = deal.get('seller_station', '')
+    buyer_station = deal.get('buyer_station', '')
+    prod_name = str(deal.get('product_name') or '')
+    qty_qtl = float(deal.get('quantity_qtl', 0))
+    qty_tonnes = float(deal.get('quantity_tonnes') or (qty_qtl * 0.1))
+
+    if role == 'SELLER':
+        rate_val = float(deal.get('seller_rate') if deal.get('seller_rate') is not None else deal.get('rate_per_qtl', 0))
+        role_label = "SELLER COPY"
+    else:
+        rate_val = float(deal.get('buyer_rate') if deal.get('buyer_rate') is not None else deal.get('rate_per_qtl', 0))
+        role_label = "BUYER COPY"
+
+    rate_str = f"Rs. {round(rate_val):,} + GST"
+    adv_date = str(deal.get('advance_payment_date') or deal_date)
+    delivery = str(deal.get('delivery_condition') or 'Ex-Mill Lifting as per contract')
+
+    lines = [
+        f"*BARGAIN CONFIRMATION — GANESH & COMPANY* ({role_label})",
+        "*Sri Ganganagar, Rajasthan*",
+        "━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"*Bargain No:* {bgn}",
+        f"*Date:* {deal_date}",
+        f"*Seller:* {seller_name.upper()}{f' ({seller_station})' if seller_station else ''}",
+        f"*Buyer:* {buyer_name.upper()}{f' ({buyer_station})' if buyer_station else ''}",
+        f"*Commodity:* {prod_name}",
+        f"*Quantity:* {qty_tonnes:g} Tons ({qty_qtl:g} Quintals)",
+        f"*Rate:* {rate_str} Per Quintal",
+        f"*Advance Date:* {adv_date}",
+        f"*Delivery Condition:* {delivery}",
+        "━━━━━━━━━━━━━━━━━━━━━━━━",
+        "⚠️ *Note:* This is a system-generated document. No physical signature required.",
+        "_Subject to Sri Ganganagar Jurisdiction._",
+        "_For inquiries contact: Sanjay Kumar Aggarwal (94619-40113)_"
+    ]
+    return "\n".join(lines)

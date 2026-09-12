@@ -12,10 +12,13 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT, TA_JUSTIFY
+import reportlab.rl_config
+reportlab.rl_config.pageCompression = 0
 
-def generate_deal_contract_pdf(deal: Dict[str, Any]) -> bytes:
+def generate_deal_contract_pdf(deal: Dict[str, Any], recipient_role: Optional[str] = None) -> bytes:
     """
     Generates a byte string containing the official single-page A4 PDF contract.
+    Strictly isolates Seller Rate and Buyer Rate based on recipient_role ('SELLER' or 'BUYER').
     """
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -180,9 +183,15 @@ def generate_deal_contract_pdf(deal: Dict[str, Any]) -> bytes:
     story.append(header_table)
 
     # 3. Document Title
-    story.append(Paragraph("<u>BARGAIN CONFIRMATION</u>", doc_title_style))
+    if recipient_role == 'SELLER':
+        doc_title_text = "BARGAIN CONFIRMATION (SELLER COPY)"
+    elif recipient_role == 'BUYER':
+        doc_title_text = "BARGAIN CONFIRMATION (BUYER COPY)"
+    else:
+        doc_title_text = "BARGAIN CONFIRMATION"
+    story.append(Paragraph(f"<u>{doc_title_text}</u>", doc_title_style))
 
-    # 4. Extract deal values safely
+    # 4. Extract deal values safely with rate confidentiality
     bgn = deal.get('bgn_code') or deal.get('id') or 'BGN-001'
     deal_date = str(deal.get('deal_date') or '')
     seller_name = f"{deal.get('seller_name', '')} ({deal.get('seller_station', '')})"
@@ -190,7 +199,16 @@ def generate_deal_contract_pdf(deal: Dict[str, Any]) -> bytes:
     prod_name = str(deal.get('product_name') or '')
     qty_qtl = float(deal.get('quantity_qtl', 0))
     qty_tonnes = float(deal.get('quantity_tonnes') or (qty_qtl * 0.1))
-    rate = f"Rs. {round(float(deal.get('rate_per_qtl', 0))):,} + GST Per Qt."
+
+    # Confidential Rate Isolation
+    if recipient_role == 'SELLER':
+        rate_val = float(deal.get('seller_rate') if deal.get('seller_rate') is not None else deal.get('rate_per_qtl', 0))
+    elif recipient_role == 'BUYER':
+        rate_val = float(deal.get('buyer_rate') if deal.get('buyer_rate') is not None else deal.get('rate_per_qtl', 0))
+    else:
+        rate_val = float(deal.get('seller_rate') or deal.get('rate_per_qtl', 0))
+
+    rate = f"Rs. {round(rate_val):,} + GST Per Qt."
     adv_date = str(deal.get('advance_payment_date') or deal_date)
     delivery = str(deal.get('delivery_condition') or 'Ex-Mill Lifting as per contract')
 

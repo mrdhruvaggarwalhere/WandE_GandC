@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ganesh & Company — Agricultural Commodity Brokerage & Canvassing</title>
   <meta name="description" content="Executive commodity brokerage and canvassing platform for edible oil & oil cake in Sri Ganganagar, Rajasthan.">
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v=20260911_v2">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Client-side PDF Generation -->
@@ -46,60 +46,44 @@
         <a class="nav-link active" data-view="dashboard" id="nav-dashboard">
           <div class="nav-link-left">
             <i data-lucide="layout-dashboard" class="nav-icon"></i>
-            <span class="nav-label">Executive Dashboard</span>
+            <span class="nav-label">Dashboard</span>
           </div>
         </a>
 
         <a class="nav-link" data-view="bargains" id="nav-bargains">
           <div class="nav-link-left">
             <i data-lucide="receipt" class="nav-icon"></i>
-            <span class="nav-label">Bargains Hub</span>
+            <span class="nav-label">Bargains</span>
           </div>
-          <span class="nav-counter" id="badge-bargains-count">0</span>
+          <span class="nav-counter" id="badge-bargains-count" style="display: none;"></span>
         </a>
 
         <a class="nav-link" data-view="parties" id="nav-parties">
           <div class="nav-link-left">
             <i data-lucide="building-2" class="nav-icon"></i>
-            <span class="nav-label">Party Directory</span>
+            <span class="nav-label">Parties</span>
           </div>
-          <span class="nav-counter" id="badge-parties-count">0</span>
+          <span class="nav-counter" id="badge-parties-count" style="display: none;"></span>
         </a>
 
         <a class="nav-link" data-view="dispatches" id="nav-dispatches">
           <div class="nav-link-left">
             <i data-lucide="message-square-share" class="nav-icon"></i>
-            <span class="nav-label">WhatsApp & Email Logs</span>
+            <span class="nav-label">Communications</span>
           </div>
-          <span class="nav-counter" id="badge-dispatches-count">0</span>
-        </a>
-
-        <div class="nav-category">Market & Analytics</div>
-
-        <a class="nav-link" data-view="market-rates" id="nav-market-rates">
-          <div class="nav-link-left">
-            <i data-lucide="trending-up" class="nav-icon"></i>
-            <span class="nav-label">Market Rates & Mandis</span>
-          </div>
-        </a>
-
-        <a class="nav-link" data-view="reports" id="nav-reports">
-          <div class="nav-link-left">
-            <i data-lucide="bar-chart-3" class="nav-icon"></i>
-            <span class="nav-label">Trade Reports & Analytics</span>
-          </div>
+          <span class="nav-counter" id="badge-dispatches-count" style="display: none;"></span>
         </a>
 
         <a class="nav-link" data-view="trash" id="nav-trash">
           <div class="nav-link-left">
             <i data-lucide="trash-2" class="nav-icon"></i>
-            <span class="nav-label">Trash / Recycle Bin</span>
+            <span class="nav-label">Recycle Bin</span>
           </div>
-          <span class="nav-counter" id="badge-trash-count">0</span>
+          <span class="nav-counter" id="badge-trash-count" style="display: none;"></span>
         </a>
       </div>
 
-      <!-- User Profile & Shortcuts Footer -->
+      <!-- User Profile Footer (Clean & Subtle) -->
       <div class="sidebar-footer">
         <div class="user-profile-pill" id="user-profile-pill">
           <div class="user-avatar-wrapper">
@@ -109,10 +93,6 @@
               <span class="user-role">Proprietor • Sri Ganganagar</span>
             </div>
           </div>
-        </div>
-        <div class="shortcut-hint-pill">
-          <span>Global Search</span>
-          <kbd>⌘K</kbd>
         </div>
       </div>
     </aside>
@@ -129,60 +109,24 @@
           </div>
         </div>
 
-        <!-- Live Mandi Ticker Marquee -->
-        <div class="mandi-ticker-container">
-          <div class="ticker-pulse-badge">
-            <span class="pulse-dot"></span>
-            <span>MANDI LIVE</span>
-          </div>
-          <div class="ticker-viewport">
-            <div class="ticker-track" id="mandi-ticker-track">
-              <!-- Populated dynamically via JS -->
-              <div class="ticker-item">
-                <span>[BGN-006] Mustard Oil 32 MT</span>
-                <span>•</span>
-                <strong>HARBANS ➔ TERAI</strong>
-                <span>•</span>
-                <span class="rate">₹15,250/Qtl</span>
-              </div>
-              <div class="ticker-item">
-                <span>[BGN-004] Mustard Cake 40 MT</span>
-                <span>•</span>
-                <strong>RAJASTHAN ➔ KUBER</strong>
-                <span>•</span>
-                <span class="rate">₹2,850/Qtl</span>
-              </div>
-              <div class="ticker-item">
-                <span>[BGN-003] Refined Soya 25 MT</span>
-                <span>•</span>
-                <strong>HARBANS ➔ SHREE GANESH</strong>
-                <span>•</span>
-                <span class="rate">₹12,400/Qtl</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div class="topbar-right">
-          <!-- Email Gateway Quick Settings Button -->
-          <button class="btn btn-secondary btn-sm" id="btn-topbar-rediffmail" title="Email Dispatch Gateway Settings" style="display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; font-size: 12px; font-weight: 500;">
-            <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--emerald); box-shadow: 0 0 6px var(--emerald);"></span>
-            <i data-lucide="mail" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
-            <span>Email Gateway</span>
-          </button>
+          <!-- Subtle Email Connection Status Indicator -->
+          <div class="topbar-email-indicator" id="btn-topbar-rediffmail" title="Email Dispatch Gateway Settings (Click to configure)">
+            <span class="status-dot-indicator ready" id="indicator-email-status-dot"></span>
+            <span class="topbar-email-text" id="indicator-email-status-text">Email</span>
+          </div>
 
           <!-- Command Palette Button -->
           <button class="command-palette-btn" id="btn-open-command-palette" title="Quick Search (⌘K)">
             <i data-lucide="search" style="width: 14px; height: 14px;"></i>
-            <span>Search deals, parties...</span>
+            <span>Search bargains or parties</span>
             <kbd>⌘K</kbd>
           </button>
 
-          <!-- New Bargain Button -->
+          <!-- Primary Action: New Bargain Button -->
           <button class="btn btn-primary" id="btn-open-new-bargain" title="New Bargain Contract (Ctrl+B)">
-            <i data-lucide="plus" style="width: 15px; height: 15px;"></i>
-            <span>+ New Bargain</span>
-            <kbd style="background: rgba(0,0,0,0.25); color: #FFF; border: none;">Ctrl+B</kbd>
+            <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+            <span>New Bargain</span>
           </button>
         </div>
       </header>
@@ -197,104 +141,67 @@
           <div class="view-header">
             <div class="view-title-group">
               <h2>Executive Dashboard</h2>
-              <p>Real-time Sri Ganganagar Mandi trading analytics, traded volumes & confirmations.</p>
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button class="btn btn-secondary btn-sm" id="btn-refresh-dashboard">
-                <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i>
-                <span>Refresh Feed</span>
-              </button>
+              <p>Overview of today's activity and pending items.</p>
             </div>
           </div>
 
-          <!-- 4 KPI Metric Cards -->
+          <!-- 4 Compact Flat KPI Metric Cards (No Icon Boxes) -->
           <div class="kpi-grid">
-            <!-- KPI 1: Today's Deals -->
-            <div class="kpi-card">
-              <div class="kpi-card-header">
-                <span class="kpi-title">Today's Deals</span>
-                <div class="kpi-icon-pill"><i data-lucide="calendar-check" style="width: 16px; height: 16px;"></i></div>
-              </div>
+            <!-- KPI 1: Today's Bargains -->
+            <div class="kpi-card is-interactive" id="kpi-card-today-deals" title="Click to view bargains">
+              <div class="kpi-label">TODAY'S BARGAINS</div>
               <div class="kpi-value-row">
-                <span class="kpi-value" id="kpi-today-deals">6</span>
-                <span class="kpi-badge kpi-badge-positive" id="kpi-deals-trend">+14% vs yesterday</span>
+                <span class="kpi-value" id="kpi-today-deals">—</span>
               </div>
-              <span class="kpi-subtext">Active Mandi contracts confirmed</span>
+              <div class="kpi-subtext">Bargains created today</div>
             </div>
 
-            <!-- KPI 2: Active Traded Volume -->
+            <!-- KPI 2: Today's Volume -->
             <div class="kpi-card">
-              <div class="kpi-card-header">
-                <span class="kpi-title">Traded Volume</span>
-                <div class="kpi-icon-pill"><i data-lucide="scale" style="width: 16px; height: 16px;"></i></div>
-              </div>
+              <div class="kpi-label">TODAY'S VOLUME</div>
               <div class="kpi-value-row">
-                <span class="kpi-value" id="kpi-traded-volume">179 MT</span>
+                <span class="kpi-value" id="kpi-traded-volume">— MT</span>
               </div>
-              <div class="progress-bar-bg" style="margin-top: 4px;">
-                <div class="progress-bar-fill fill-emerald" style="width: 78%;"></div>
-              </div>
-              <span class="kpi-subtext">1,790 Quintals booked this session</span>
+              <div class="kpi-subtext">Quantity booked today</div>
             </div>
 
-            <!-- KPI 3: Active Parties -->
-            <div class="kpi-card">
-              <div class="kpi-card-header">
-                <span class="kpi-title">Active Parties</span>
-                <div class="kpi-icon-pill"><i data-lucide="users" style="width: 16px; height: 16px;"></i></div>
-              </div>
+            <!-- KPI 3: Parties -->
+            <div class="kpi-card is-interactive" id="kpi-card-parties" title="Click to open Party Directory">
+              <div class="kpi-label">PARTIES</div>
               <div class="kpi-value-row">
-                <span class="kpi-value" id="kpi-active-parties">9</span>
+                <span class="kpi-value" id="kpi-active-parties">—</span>
               </div>
-              <span class="kpi-subtext">Registered crushing mills & buyers</span>
+              <div class="kpi-subtext">Registered parties</div>
             </div>
 
             <!-- KPI 4: Pending Confirmations -->
-            <div class="kpi-card">
-              <div class="kpi-card-header">
-                <span class="kpi-title">Pending Confirmations</span>
-                <div class="kpi-icon-pill"><i data-lucide="clock" style="width: 16px; height: 16px;"></i></div>
-              </div>
+            <div class="kpi-card is-interactive" id="kpi-card-pending" title="Click to view pending items">
+              <div class="kpi-label">PENDING CONFIRMATIONS</div>
               <div class="kpi-value-row">
-                <span class="kpi-value" id="kpi-pending-confirmations" style="color: var(--gold);">1</span>
-                <span class="kpi-badge kpi-badge-warning">Attention Req.</span>
+                <span class="kpi-value" id="kpi-pending-confirmations">—</span>
               </div>
-              <span class="kpi-subtext">Awaiting buyer / seller signature</span>
+              <div class="kpi-subtext">Requires attention</div>
             </div>
           </div>
 
-          <!-- Today's Bargains (Primary Dashboard Feed) -->
-          <div class="card-panel">
+          <!-- Section 1: Today's Bargains -->
+          <div class="card-panel" id="panel-todays-bargains" style="margin-bottom: 24px;">
             <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="zap" style="width: 16px; height: 16px; color: var(--gold);"></i>
-                <span>Today's Bargains</span>
-                <span class="ticker-pulse-badge" style="margin-left: 8px;">
-                  <span class="pulse-dot"></span>
-                  <span>TODAY'S SESSION</span>
-                </span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <button class="btn btn-secondary btn-xs" id="btn-goto-bargains" title="View complete bargains repository">
-                  <span>View All in Bargains Hub &rarr;</span>
-                </button>
-                <button class="btn btn-primary btn-xs" id="btn-dash-new-bargain" title="Log new bargain contract (Ctrl+B)">
-                  <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
-                  <span>+ New Bargain</span>
-                </button>
-              </div>
+              <div class="panel-title">Today's Bargains</div>
+              <button type="button" class="btn-quiet-action" id="btn-goto-bargains">View all</button>
             </div>
-            <div class="data-table-container">
+            
+            <div class="data-table-container" id="container-todays-bargains">
               <table class="data-table" id="table-todays-bargains">
-                <thead>
+                <thead id="thead-todays-bargains">
                   <tr>
-                    <th>Bargain ID</th>
+                    <th>ID</th>
                     <th>Date</th>
-                    <th>Seller (Mill)</th>
-                    <th>Buyer (Wholesaler)</th>
+                    <th>Seller</th>
+                    <th>Buyer</th>
                     <th>Commodity</th>
-                    <th>Qty (MT)</th>
-                    <th>Rate (₹/Qtl)</th>
+                    <th>Qty</th>
+                    <th>Rate</th>
                     <th>Status</th>
                     <th style="text-align: right;">Actions</th>
                   </tr>
@@ -303,6 +210,49 @@
                   <!-- Injected via JS -->
                 </tbody>
               </table>
+
+              <!-- Empty state when zero bargains today (Table headers hidden) -->
+              <div class="empty-state-card" id="empty-state-todays-bargains" style="display: none;">
+                <h3 class="empty-state-title">No bargains today</h3>
+                <p class="empty-state-desc">New bargains created today will appear here.</p>
+                <button type="button" class="link-quiet-action" onclick="document.getElementById('btn-open-new-bargain').click()">
+                  + Create bargain
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Needs Attention (Operational Actionable Items) -->
+          <div class="card-panel" id="panel-needs-attention">
+            <div class="panel-header">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="panel-title">Needs Attention</span>
+                <span class="panel-count-pill" id="badge-needs-attention-count" style="display: none;">0</span>
+              </div>
+            </div>
+
+            <div class="data-table-container" id="container-needs-attention">
+              <table class="data-table" id="table-needs-attention">
+                <thead id="thead-needs-attention">
+                  <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Parties</th>
+                    <th>Commodity / Qty</th>
+                    <th>Issue Requiring Attention</th>
+                    <th style="text-align: right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-needs-attention">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+
+              <!-- Empty state when all caught up -->
+              <div class="empty-state-card" id="empty-state-needs-attention" style="display: none;">
+                <h3 class="empty-state-title">You're all caught up.</h3>
+                <p class="empty-state-desc">No pending confirmations or unresolved bargains requiring immediate action.</p>
+              </div>
             </div>
           </div>
         </section>
@@ -314,16 +264,16 @@
           <div class="view-header">
             <div class="view-title-group">
               <h2>Bargains Hub</h2>
-              <p>Centralized deal registry with instant multi-filter search, CSV export & print confirmations.</p>
+              <p>Manage and track all bargains.</p>
             </div>
             <div style="display: flex; gap: 8px;">
               <button class="btn btn-secondary btn-sm" id="btn-export-csv" title="Export current filtered table to CSV">
                 <i data-lucide="download" style="width: 13px; height: 13px;"></i>
-                <span>📥 Export to CSV</span>
+                <span>Export</span>
               </button>
               <button class="btn btn-primary btn-sm" id="btn-hub-new-bargain">
                 <i data-lucide="plus" style="width: 13px; height: 13px;"></i>
-                <span>+ New Bargain</span>
+                <span>New Bargain</span>
               </button>
             </div>
           </div>
@@ -333,7 +283,7 @@
             <div class="toolbar-left">
               <div class="search-input-wrapper">
                 <i data-lucide="search" class="search-icon"></i>
-                <input type="text" class="search-input" id="filter-search-input" placeholder="Search Bargain ID, Party, Mandi Station, Commodity...">
+                <input type="text" class="search-input" id="filter-search-input" placeholder="Search bargains...">
               </div>
 
               <!-- Multi-status filter pills -->
@@ -358,21 +308,36 @@
             </div>
           </div>
 
-          <!-- 10-Column Data Table -->
+          <!-- Bulk Action Bar -->
+          <div id="bulk-action-bar" class="bulk-action-bar" style="display: none;">
+            <div class="bulk-selected-info">
+              <span id="bulk-selected-count">0 selected</span>
+            </div>
+            <div class="bulk-action-buttons">
+              <button type="button" class="btn btn-secondary btn-xs" id="btn-bulk-clear">Clear selection</button>
+              <button type="button" class="btn btn-danger btn-xs" id="btn-bulk-delete">
+                <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                <span>Move to Recycle Bin</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Data Table -->
           <div class="data-table-container">
             <table class="data-table" id="table-all-bargains">
               <thead>
                 <tr>
-                  <th class="sortable" data-col="bgn_code">Bargain ID</th>
+                  <th style="width: 38px; text-align: center;">
+                    <input type="checkbox" id="check-all-bargains" title="Select all visible bargains">
+                  </th>
+                  <th class="sortable" data-col="bgn_code">ID</th>
                   <th class="sortable" data-col="deal_date">Date</th>
-                  <th>Seller (Firm & Station)</th>
-                  <th>Buyer (Firm & Station)</th>
+                  <th>Seller</th>
+                  <th>Buyer</th>
                   <th>Commodity</th>
                   <th class="sortable" data-col="quantity_tonnes">Quantity</th>
-                  <th class="sortable" data-col="rate_per_qtl">Rate (₹)</th>
+                  <th class="sortable" data-col="seller_rate">Rate (₹/Qtl)</th>
                   <th>Status</th>
-                  <th title="Buyer Formal Confirmation">Buyer ✓</th>
-                  <th title="Seller Formal Confirmation">Seller ✓</th>
                   <th style="text-align: right;">Actions</th>
                 </tr>
               </thead>
@@ -390,7 +355,7 @@
           <div class="view-header">
             <div class="view-title-group">
               <h2>Party Directory</h2>
-              <p>Crushing mills, buyers, wholesalers & contact hierarchy across Rajasthan, Haryana, WB mandis.</p>
+              <p>Registered buyers, sellers, and contact hierarchy.</p>
             </div>
             <div style="display: flex; gap: 8px;">
               <button class="btn btn-primary btn-sm" id="btn-add-party">
@@ -417,20 +382,36 @@
             </div>
           </div>
 
-          <!-- Party Cards Grid -->
-          <div class="party-grid" id="party-cards-container">
-            <!-- Injected via JS -->
+          <!-- Party Directory CRM Table -->
+          <div class="data-table-container">
+            <table class="data-table" id="table-parties">
+              <thead>
+                <tr>
+                  <th>Party</th>
+                  <th>Location</th>
+                  <th>Type</th>
+                  <th>Contact Person</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>Deals</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="party-cards-container">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
           </div>
         </section>
 
         <!-- =================================================================
-             SCREEN 5: WHATSAPP & EMAIL LOGS
+             SCREEN 5: COMMUNICATIONS (WhatsApp & Email Logs)
              ================================================================= -->
         <section class="view-pane" id="view-dispatches">
           <div class="view-header">
             <div class="view-title-group">
-              <h2>WhatsApp & Email Logs</h2>
-              <p>Audit trail of all deal confirmations dispatched to buyers, sellers & transporters.</p>
+              <h2>Communications</h2>
+              <p>Audit trail of all deal confirmations dispatched via WhatsApp and Email.</p>
             </div>
           </div>
 
@@ -457,104 +438,13 @@
         </section>
 
         <!-- =================================================================
-             SCREEN 6: MARKET RATES & COMMODITIES
-             ================================================================= -->
-        <section class="view-pane" id="view-market-rates">
-          <div class="view-header">
-            <div class="view-title-group">
-              <h2>Market Rates & Mandi Benchmarks</h2>
-              <p>Daily benchmark trading rates for Mustard Oil, Mustard Cake, Refined Soy & Palm across key stations.</p>
-            </div>
-          </div>
-
-          <div class="kpi-grid" id="market-rates-grid">
-            <!-- Injected via JS -->
-          </div>
-
-          <div class="card-panel">
-            <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="info" style="width: 16px; height: 16px; color: var(--gold);"></i>
-                <span>Regional Mandi Benchmarks & Freight Parity</span>
-              </div>
-            </div>
-            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
-              Sri Ganganagar (Rajasthan) is Northern India's premier mustard oil crushing and trading hub. 
-              Spot bargains executed by Ganesh & Company are linked to prevailing ex-mill quotes from Sangaria, Anoupgarh, and Sri Ganganagar mandi crushers, with deliveries routed across Rajasthan, Haryana (Hisar, Panchkula, Rewari) and North-East trunk terminals (Siliguri, West Bengal).
-            </p>
-          </div>
-        </section>
-
-        <!-- =================================================================
-             SCREEN 7: REPORTS & ANALYTICS
-             ================================================================= -->
-        <section class="view-pane" id="view-reports">
-          <div class="view-header">
-            <div class="view-title-group">
-              <h2>Trade Reports & Analytics</h2>
-              <p>Traded commodity volume summaries, bargain records & fulfillment metrics.</p>
-            </div>
-            <button class="btn btn-secondary btn-sm" id="btn-export-excel-report">
-              <i data-lucide="file-spreadsheet" style="width: 14px; height: 14px;"></i>
-              <span>Export Full Excel Register</span>
-            </button>
-          </div>
-
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <span class="kpi-title">Total Active Contracts</span>
-              <span class="kpi-value" id="rep-total-deals">0</span>
-              <span class="kpi-subtext">Executed canvassing contracts</span>
-            </div>
-            <div class="kpi-card">
-              <span class="kpi-title">Total Traded Volume</span>
-              <span class="kpi-value" id="rep-traded-volume" style="color: var(--emerald);">0 MT</span>
-              <span class="kpi-subtext">Total physical commodity traded</span>
-            </div>
-            <div class="kpi-card">
-              <span class="kpi-title">Resale Arbitrage Profit</span>
-              <span class="kpi-value" id="rep-diff-profit" style="color: var(--gold);">₹0</span>
-              <span class="kpi-subtext">Resale lot chain price difference</span>
-            </div>
-            <div class="kpi-card">
-              <span class="kpi-title">Active Mandi Parties</span>
-              <span class="kpi-value" id="rep-active-parties">0</span>
-              <span class="kpi-subtext">Registered crushing mills & buyers</span>
-            </div>
-          </div>
-
-          <div class="card-panel">
-            <div class="panel-header">
-              <div class="panel-title">Party-Wise Traded Volume Register</div>
-            </div>
-            <div class="data-table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Party Legal Name</th>
-                    <th>Station</th>
-                    <th>Role Type</th>
-                    <th>Total Deals</th>
-                    <th>Total Volume (MT)</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="tbody-party-receivables">
-                  <!-- Injected via JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- =================================================================
-             SCREEN 8: TRASH / RECYCLE BIN
+             SCREEN 8: RECYCLE BIN
              ================================================================= -->
         <section class="view-pane" id="view-trash">
           <div class="view-header">
             <div class="view-title-group">
-              <h2>Trash / Recycle Bin</h2>
-              <p>Restore soft-deleted bargains or permanently wipe contracts with full audit logging.</p>
+              <h2>Recycle Bin</h2>
+              <p>Manage soft-deleted bargains and restore contracts with full audit logging.</p>
             </div>
           </div>
 
@@ -591,24 +481,28 @@
     <div class="modal-sheet modal-sheet-lg">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <i data-lucide="file-text" style="width: 18px; height: 18px; color: var(--gold);"></i>
-          <h3>Official A4 Bargain Confirmation — Print View</h3>
+          <i data-lucide="file-text" style="width: 17px; height: 17px; color: var(--gold);"></i>
+          <h3 style="font-size: 15px; font-weight: 700;">Bargain Confirmation <span id="doc-bgn-header-code" class="mono" style="color: var(--brand); margin-left: 4px;"></span></h3>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-secondary btn-sm" id="btn-download-pdf" title="Download official PDF file to your device">
-            <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div class="copy-switcher-pills" id="letterhead-role-toggle" style="display: inline-flex; background: var(--bg-card); padding: 2px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+            <button type="button" class="btn btn-xs active" id="btn-copy-seller" style="padding: 3px 10px; font-size: 11.5px; font-weight: 600;">Seller Copy</button>
+            <button type="button" class="btn btn-xs" id="btn-copy-buyer" style="padding: 3px 10px; font-size: 11.5px; font-weight: 600;">Buyer Copy</button>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-download-pdf" title="Download official PDF file">
+            <i data-lucide="download" style="width: 13px; height: 13px;"></i>
             <span>Download PDF</span>
           </button>
-          <button class="btn btn-primary btn-sm" id="btn-letterhead-dispatch" style="background: linear-gradient(135deg, #10B981, #059669); border-color: #10B981;" title="Send PDF to WhatsApp and Email">
-            <i data-lucide="send" style="width: 14px; height: 14px;"></i>
-            <span>Send to WhatsApp &amp; Email</span>
-          </button>
           <button class="btn btn-secondary btn-sm" id="btn-print-contract" title="Print document">
-            <i data-lucide="printer" style="width: 14px; height: 14px;"></i>
+            <i data-lucide="printer" style="width: 13px; height: 13px;"></i>
             <span>Print</span>
           </button>
-          <button class="btn btn-ghost btn-sm" id="btn-close-letterhead">
-            <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+          <button class="btn btn-ghost btn-sm" id="btn-letterhead-dispatch" title="Open Send Confirmation modal">
+            <i data-lucide="send" style="width: 13px; height: 13px;"></i>
+            <span>Send</span>
+          </button>
+          <button class="btn btn-ghost btn-sm btn-icon-only" id="btn-close-letterhead" title="Close">
+            <i data-lucide="x" style="width: 15px; height: 15px;"></i>
           </button>
         </div>
       </div>
@@ -648,7 +542,7 @@
           </div>
 
           <!-- Document Title -->
-          <div class="contract-doc-title">BARGAIN CONFIRMATION</div>
+          <div class="contract-doc-title">BARGAIN CONFIRMATION <span id="doc-role-badge" style="font-size: 13px; font-weight: 700; color: #374151; vertical-align: middle; margin-left: 6px;">(SELLER COPY)</span></div>
 
           <!-- 2-Column Key-Value Grid -->
           <table class="contract-grid-table">
@@ -726,226 +620,203 @@
   </div>
 
   <!-- =========================================================================
-       MODAL 2: INSTANT COMMUNICATION PANEL (WhatsApp & Email Dispatch)
+       MODAL 2: SEND BARGAIN CONFIRMATION (DUAL-PARTY ARCHITECTURE)
        ========================================================================= -->
   <div class="modal-overlay" id="modal-dispatch">
     <div class="modal-sheet modal-sheet-lg">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <i data-lucide="send" style="width: 18px; height: 18px; color: #10B981;"></i>
-          <h3>Send Bargain Confirmation PDF (WhatsApp &amp; Email)</h3>
+          <i data-lucide="send" style="width: 17px; height: 17px; color: var(--accent-teal);"></i>
+          <h3>Send Bargain Confirmation</h3>
         </div>
-        <button class="btn btn-ghost btn-sm" id="btn-close-dispatch">
+        <button class="btn btn-ghost btn-xs btn-icon-only" id="btn-close-dispatch" title="Close">
           <i data-lucide="x" style="width: 16px; height: 16px;"></i>
         </button>
       </div>
 
       <div class="modal-body">
-        <div class="profile-tabs" id="dispatch-tabs">
-          <button class="profile-tab-btn active" data-tab="both">🚀 Send to Both (WhatsApp &amp; Email)</button>
-          <button class="profile-tab-btn" data-tab="whatsapp">💬 WhatsApp Web</button>
-          <button class="profile-tab-btn" data-tab="email">✉️ Email Dispatch</button>
+        <!-- Compact Metadata Header -->
+        <div class="send-bgn-meta-header">
+          <div class="send-bgn-title">
+            <span class="mono" id="send-meta-bgn" style="color: var(--brand); font-weight: 700;">BGN-001</span>
+            <span style="color: var(--border-active);">&bull;</span>
+            <span id="send-meta-product">Mustard Oil</span>
+            <span style="color: var(--border-active);">&bull;</span>
+            <span id="send-meta-quantity" class="mono">15 MT</span>
+          </div>
+          <div class="send-bgn-sub" id="send-meta-date">Date: 2026-09-11</div>
         </div>
 
-        <!-- Tab 1: Send to Both (WhatsApp & Email) -->
-        <div id="tab-pane-both" style="display: flex; flex-direction: column; gap: 14px;">
-          <!-- System Generated PDF Attachment Status Card -->
-          <div class="pdf-attachment-banner">
-            <div class="pdf-icon-badge">
-              <i data-lucide="file-check" style="width: 22px; height: 22px; color: var(--emerald);"></i>
-            </div>
-            <div class="pdf-info-text">
-              <div class="pdf-file-title" id="both-pdf-filename">Bargain_Confirmation_BGN-006.pdf</div>
-              <div class="pdf-file-subtext">System-generated PDF confirmation &bull; Includes mandi clauses &bull; No signature required</div>
-            </div>
-            <button class="btn btn-secondary btn-xs" id="btn-both-download-pdf" title="Download PDF to computer">
-              <i data-lucide="download" style="width: 13px; height: 13px;"></i>
-              <span>Download PDF</span>
-            </button>
-          </div>
-
-          <!-- Real-Time Delivery Tracking Card -->
-          <div class="dispatch-tracking-card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
-                <i data-lucide="radio" style="width: 13px; height: 13px; color: var(--emerald);"></i>
-                <span>Direct Delivery Status</span>
-              </div>
-              <button type="button" class="btn btn-ghost btn-xs" id="btn-recheck-both-status" style="border: 1px solid var(--border-subtle); color: var(--text); padding: 2px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 5px;" title="Recheck live delivery status from server">
-                <i data-lucide="refresh-cw" id="recheck-both-icon" style="width: 11px; height: 11px;"></i>
-                <span>Recheck Status</span>
-              </button>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(37, 211, 102, 0.06); border: 1px solid rgba(37, 211, 102, 0.2); border-radius: 6px; padding: 6px 10px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <i data-lucide="message-circle" style="width: 13px; height: 13px; color: #25D366;"></i>
-                  <span style="font-size: 11.5px; font-weight: 600; color: var(--text);">WhatsApp</span>
-                </div>
-                <span id="both-wa-status-pill" class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94A3B8; font-size: 10.5px;">Not Sent</span>
-              </div>
-              <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px; padding: 6px 10px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <i data-lucide="mail" style="width: 13px; height: 13px; color: var(--emerald);"></i>
-                  <span style="font-size: 11.5px; font-weight: 600; color: var(--text);">Email</span>
-                </div>
-                <span id="both-email-status-pill" class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94A3B8; font-size: 10.5px;">Not Sent</span>
-              </div>
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <div class="form-group">
-              <label class="form-label">
-                <i data-lucide="phone" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
-                WhatsApp Phone Number
-              </label>
-              <input type="text" class="form-input mono" id="dispatch-both-phone" placeholder="+91 94140 51234">
-            </div>
-            <div class="form-group">
-              <label class="form-label">
-                <i data-lucide="mail" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
-                Recipient Email Address
-              </label>
-              <input type="email" class="form-input" id="dispatch-both-email" placeholder="kailash@harbansoil.com">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Confirmation Message &amp; Online Contract Preview</label>
-            <div class="dispatch-preview-box" id="both-preview-box">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px; gap: 8px; flex-wrap: wrap;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-native-share-both" style="display: inline-flex; align-items: center; gap: 6px;">
-              <i data-lucide="share-2" style="width: 14px; height: 14px; color: var(--emerald);"></i>
-              <span>Share PDF Document</span>
-            </button>
-            <button class="btn btn-primary btn-sm" id="btn-dispatch-both-action" style="background: linear-gradient(135deg, #10B981, #059669); font-weight: 700; padding: 7px 18px; box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);">
-              <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
-              <span id="btn-dispatch-both-label">⚡ Direct Send to Both (Zero Apps Opened)</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Tab 2: WhatsApp Web -->
-        <div id="tab-pane-whatsapp" style="display: none; flex-direction: column; gap: 14px;">
-          <!-- PDF Attachment indicator -->
-          <div class="pdf-attachment-banner">
-            <div class="pdf-icon-badge">
-              <i data-lucide="file-text" style="width: 20px; height: 20px; color: #25D366;"></i>
-            </div>
-            <div class="pdf-info-text">
-              <div class="pdf-file-title" id="wa-pdf-filename">Bargain_Confirmation_BGN-006.pdf</div>
-              <div class="pdf-file-subtext">Official PDF generated with letterhead &bull; Includes direct online link</div>
-            </div>
-            <button class="btn btn-secondary btn-xs" id="btn-wa-download-pdf">
-              <i data-lucide="download" style="width: 12px; height: 12px;"></i>
-              <span>Download PDF</span>
-            </button>
-          </div>
-
-          <div style="background: rgba(37, 211, 102, 0.08); border: 1px solid rgba(37, 211, 102, 0.2); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span id="wa-bot-status-dot" style="width: 10px; height: 10px; border-radius: 50%; background: #94A3B8; display: inline-block;"></span>
-              <span id="wa-bot-status-text" style="font-size: 12px; font-weight: 600; color: var(--text);">Checking WhatsApp connection...</span>
-            </div>
-            <button type="button" class="btn btn-xs" id="btn-wa-link-device" style="background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); font-weight: 600;">
-              Link WhatsApp
-            </button>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Recipient Phone Number (International format)</label>
-            <input type="text" class="form-input mono" id="dispatch-phone" placeholder="+91 94140 51234">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Deal Message Preview</label>
-            <div class="dispatch-preview-box" id="whatsapp-preview-box">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <button class="btn btn-secondary btn-sm" id="btn-copy-whatsapp">
-              <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
-              <span>Copy Text</span>
-            </button>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button class="btn btn-secondary btn-sm" id="btn-direct-send-wa" style="color: var(--text-dim); display: inline-flex; align-items: center; gap: 6px;" title="Dispatches raw PDF file via automated background bot">
-                <i data-lucide="bot" style="width: 14px; height: 14px;"></i>
-                <span>Send PDF via Bot</span>
-              </button>
-              <a class="btn btn-primary btn-sm" id="btn-open-whatsapp-web" target="_blank" rel="noopener noreferrer" style="background: #25D366; color: #0B0F19; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                <i data-lucide="zap" style="width: 14px; height: 14px; fill: #0B0F19;"></i>
-                <span>Open in WhatsApp (Instant)</span>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tab 3: Email -->
-        <div id="tab-pane-email" style="display: none; flex-direction: column; gap: 14px;">
-          <!-- PDF Attachment indicator -->
-          <div class="pdf-attachment-banner">
-            <div class="pdf-icon-badge">
-              <i data-lucide="file-check" style="width: 20px; height: 20px; color: var(--gold);"></i>
-            </div>
-            <div class="pdf-info-text">
-              <div class="pdf-file-title" id="email-pdf-filename">Bargain_Confirmation_BGN-006.pdf</div>
-              <div class="pdf-file-subtext">System-generated PDF &bull; No physical signature required</div>
-            </div>
-            <button class="btn btn-secondary btn-xs" id="btn-email-download-pdf">
-              <i data-lucide="download" style="width: 12px; height: 12px;"></i>
-              <span>Download PDF</span>
-            </button>
-          </div>
-
-          <!-- Active Email Gateway Status Banner -->
-          <div class="email-gateway-banner" style="display: flex; justify-content: space-between; align-items: center; background: rgba(16, 185, 129, 0.07); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid rgba(16, 185, 129, 0.22);">
-            <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
-              <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); flex-shrink: 0;"></span>
+        <!-- Dual-Party Structured Cards -->
+        <div class="send-party-grid">
+          <!-- Seller Card -->
+          <div class="send-party-card" id="card-dispatch-seller">
+            <div class="send-party-header">
               <div>
-                <span style="color: var(--text-muted);">From: </span>
-                <strong style="color: var(--text-main);">Ganesh &amp; Company</strong>
-                <span style="color: var(--text-muted); font-size: 11.5px; margin-left: 4px;">(&bull; Reply-To: <span class="mono" style="color: var(--emerald);">ganeshsgnr@rediffmail.com</span>)</span>
+                <strong id="send-seller-name" style="font-size: 13.5px; color: var(--text-primary);">Seller Name</strong>
+                <div id="send-seller-station" style="font-size: 11.5px; color: var(--text-secondary); margin-top: 1px;">Station</div>
               </div>
+              <span class="send-party-role-tag">Seller</span>
             </div>
-            <button type="button" class="btn btn-ghost btn-xs" id="btn-open-rediffmail-config" style="color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px;" title="Configure Email Gateway Settings">
-              <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
-              <span>Gateway Settings</span>
-            </button>
+            
+            <div class="send-rate-row">
+              <span class="send-rate-label">Seller Rate</span>
+              <span class="send-rate-val" id="send-seller-rate">₹0 / Qtl</span>
+            </div>
+
+            <div class="form-group" style="margin-top: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                  <input type="checkbox" id="chk-seller-email" checked> <span>Email</span>
+                </label>
+                <span id="seller-email-missing-note" style="display: none; font-size: 11px; color: var(--text-dim);">
+                  <span class="text-muted">No email address</span> &bull; <button type="button" class="btn-link-action" id="btn-seller-add-email" style="background: none; border: none; padding: 0; color: var(--brand); cursor: pointer; text-decoration: underline; font-size: 11px;">Add email</button>
+                </span>
+              </div>
+              <input type="email" class="form-input" id="dispatch-seller-email">
+            </div>
+
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                  <input type="checkbox" id="chk-seller-wa" checked> <span>WhatsApp</span>
+                </label>
+                <span id="seller-phone-missing-note" style="display: none; font-size: 11px; color: var(--text-dim);">
+                  <span class="text-muted">No phone number</span> &bull; <button type="button" class="btn-link-action" id="btn-seller-add-phone" style="background: none; border: none; padding: 0; color: var(--brand); cursor: pointer; text-decoration: underline; font-size: 11px;">Add phone</button>
+                </span>
+              </div>
+              <input type="text" class="form-input mono" id="dispatch-seller-phone">
+            </div>
+
+            <div class="send-channel-status-row">
+              <span class="channel-status-badge" id="status-badge-seller-email">
+                <i data-lucide="mail" style="width: 12px; height: 12px;"></i>
+                <span id="label-seller-email-status">Email not sent</span>
+              </span>
+              <span class="channel-status-badge" id="status-badge-seller-wa">
+                <i data-lucide="message-circle" style="width: 12px; height: 12px;"></i>
+                <span id="label-seller-wa-status">WhatsApp not prepared</span>
+              </span>
+            </div>
+
+            <div style="display: flex; gap: 6px; margin-top: 4px;">
+              <button type="button" class="btn btn-secondary btn-xs" id="btn-seller-only" style="flex: 1;">
+                <span>Send to Seller</span>
+              </button>
+              <button type="button" class="btn btn-ghost btn-xs" id="btn-seller-wa-web" title="Prepare WhatsApp message for Seller">
+                <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
+                <span>Open WhatsApp</span>
+              </button>
+              <button type="button" class="btn btn-ghost btn-xs" id="btn-seller-download-pdf" title="Download Seller Copy PDF">
+                <i data-lucide="download" style="width: 12px; height: 12px;"></i>
+                <span>Seller PDF</span>
+              </button>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Recipient Email</label>
-            <input type="email" class="form-input" id="dispatch-email-to" placeholder="kailash@harbansoil.com">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Subject</label>
-            <input type="text" class="form-input" id="dispatch-email-subject" value="Bargain Confirmation (System Generated PDF) - Ganesh & Company">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Email Body</label>
-            <div class="dispatch-preview-box" id="email-preview-box"></div>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <button class="btn btn-secondary btn-sm" id="btn-copy-email">
-              <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
-              <span>Copy Text</span>
-            </button>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button class="btn btn-secondary btn-sm" id="btn-open-email-client" title="Open in webmail or desktop email client">
-                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
-                <span>Open Mail Client</span>
+          <!-- Buyer Card -->
+          <div class="send-party-card" id="card-dispatch-buyer">
+            <div class="send-party-header">
+              <div>
+                <strong id="send-buyer-name" style="font-size: 13.5px; color: var(--text-primary);">Buyer Name</strong>
+                <div id="send-buyer-station" style="font-size: 11.5px; color: var(--text-secondary); margin-top: 1px;">Station</div>
+              </div>
+              <span class="send-party-role-tag">Buyer</span>
+            </div>
+            
+            <div class="send-rate-row">
+              <span class="send-rate-label">Buyer Rate</span>
+              <span class="send-rate-val" id="send-buyer-rate">₹0 / Qtl</span>
+            </div>
+
+            <div class="form-group" style="margin-top: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                  <input type="checkbox" id="chk-buyer-email" checked> <span>Email</span>
+                </label>
+                <span id="buyer-email-missing-note" style="display: none; font-size: 11px; color: var(--text-dim);">
+                  <span class="text-muted">No email address</span> &bull; <button type="button" class="btn-link-action" id="btn-buyer-add-email" style="background: none; border: none; padding: 0; color: var(--brand); cursor: pointer; text-decoration: underline; font-size: 11px;">Add email</button>
+                </span>
+              </div>
+              <input type="email" class="form-input" id="dispatch-buyer-email">
+            </div>
+
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                  <input type="checkbox" id="chk-buyer-wa" checked> <span>WhatsApp</span>
+                </label>
+                <span id="buyer-phone-missing-note" style="display: none; font-size: 11px; color: var(--text-dim);">
+                  <span class="text-muted">No phone number</span> &bull; <button type="button" class="btn-link-action" id="btn-buyer-add-phone" style="background: none; border: none; padding: 0; color: var(--brand); cursor: pointer; text-decoration: underline; font-size: 11px;">Add phone</button>
+                </span>
+              </div>
+              <input type="text" class="form-input mono" id="dispatch-buyer-phone">
+            </div>
+
+            <div class="send-channel-status-row">
+              <span class="channel-status-badge" id="status-badge-buyer-email">
+                <i data-lucide="mail" style="width: 12px; height: 12px;"></i>
+                <span id="label-buyer-email-status">Email not sent</span>
+              </span>
+              <span class="channel-status-badge" id="status-badge-buyer-wa">
+                <i data-lucide="message-circle" style="width: 12px; height: 12px;"></i>
+                <span id="label-buyer-wa-status">WhatsApp not prepared</span>
+              </span>
+            </div>
+
+            <div style="display: flex; gap: 6px; margin-top: 4px;">
+              <button type="button" class="btn btn-secondary btn-xs" id="btn-buyer-only" style="flex: 1;">
+                <span>Send to Buyer</span>
               </button>
-              <button class="btn btn-primary btn-sm" id="btn-send-rediffmail-direct" style="background: var(--emerald); border-color: #059669; color: #fff; font-weight: 600; padding: 7px 16px; box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25);" title="Sends email with PDF attached directly">
-                <i data-lucide="send" style="width: 14px; height: 14px;"></i>
-                <span>⚡ Send Contract Email (PDF Attached)</span>
+              <button type="button" class="btn btn-ghost btn-xs" id="btn-buyer-wa-web" title="Prepare WhatsApp message for Buyer">
+                <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
+                <span>Open WhatsApp</span>
+              </button>
+              <button type="button" class="btn btn-ghost btn-xs" id="btn-buyer-download-pdf" title="Download Buyer Copy PDF">
+                <i data-lucide="download" style="width: 12px; height: 12px;"></i>
+                <span>Buyer PDF</span>
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- Clean Preview Confirmation Accordion -->
+        <div class="preview-toggle-container">
+          <div class="preview-toggle-header" id="btn-toggle-preview">
+            <span style="display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="file-text" style="width: 13px; height: 13px;"></i>
+              <span>Preview confirmation</span>
+            </span>
+            <i data-lucide="chevron-down" id="preview-chevron" style="width: 14px; height: 14px; transition: transform var(--trans-fast);"></i>
+          </div>
+          <div class="preview-content-box" id="send-preview-content">
+            <!-- Clean human-readable preview loaded via JS -->
+          </div>
+        </div>
+
+        <!-- Hidden inputs for backward compatibility with existing tests/subroutines -->
+        <input type="hidden" id="dispatch-both-phone">
+        <input type="hidden" id="dispatch-both-email">
+        <input type="hidden" id="dispatch-phone">
+        <input type="hidden" id="dispatch-email-to">
+        <div id="both-preview-box" style="display: none;"></div>
+        <div id="whatsapp-preview-box" style="display: none;"></div>
+        <div id="email-preview-box" style="display: none;"></div>
+        <span id="both-wa-status-pill" style="display: none;"></span>
+        <span id="both-email-status-pill" style="display: none;"></span>
+      </div>
+
+      <!-- Action Footer -->
+      <div class="modal-footer" style="justify-content: space-between;">
+        <div style="font-size: 11.5px; color: var(--text-dim);">
+          Confidential rates strictly isolated per recipient copy
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-cancel-dispatch">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-dispatch-send-both">
+            <i data-lucide="send" style="width: 13px; height: 13px;"></i>
+            <span id="label-send-both">Send to Both</span>
+          </button>
         </div>
       </div>
     </div>
@@ -1008,29 +879,41 @@
             <div class="form-group">
               <label class="form-label">Quantity in Quintals (Qtl) *</label>
               <input type="number" step="any" class="form-input mono" id="input-quantity-qtl" placeholder="e.g. 320 Qtl" required>
-              <span style="font-size: 11px; color: var(--text-dim); margin-top: 2px;" id="equiv-tonnes-label">= 0.0 MT (Tonnes)</span>
+              <span style="font-size: 11px; color: var(--text-dim); margin-top: 2px;" id="equiv-tonnes-label">= 0.0 MT</span>
             </div>
           </div>
 
           <div class="form-grid-2">
             <div class="form-group">
-              <label class="form-label">Rate (₹ Per Quintal + GST) *</label>
-              <input type="number" step="any" class="form-input mono" id="input-rate-qtl" placeholder="e.g. 15250" required>
+              <label class="form-label">Seller Rate (₹/Qtl + GST) *</label>
+              <input type="number" step="any" class="form-input mono" id="input-seller-rate-qtl" placeholder="e.g. 15000" required>
             </div>
 
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label class="form-label" style="margin: 0;">Buyer Rate (₹/Qtl + GST) *</label>
+                <label style="font-size: 11px; color: var(--text-secondary); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; user-select: none;">
+                  <input type="checkbox" id="chk-same-rate" checked> Same as Seller
+                </label>
+              </div>
+              <input type="number" step="any" class="form-input mono" id="input-buyer-rate-qtl" placeholder="e.g. 15000" readonly required>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
             <div class="form-group">
               <label class="form-label">Advance Payment Due Date</label>
               <input type="date" class="form-input" id="input-advance-date">
             </div>
+
+            <div class="form-group">
+              <label class="form-label">Delivery Condition &amp; Lifting Schedule</label>
+              <input type="text" class="form-input" id="input-delivery-condition" placeholder="e.g. Ex-Mill Delivery Lifting: 13/07/2026 to 16/07/2026">
+            </div>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Delivery Condition & Lifting Schedule</label>
-            <input type="text" class="form-input" id="input-delivery-condition" placeholder="e.g. Ex-Mill Delivery Lifting: 13/07/2026 to 16/07/2026">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Internal Notes & Quality Specs</label>
+            <label class="form-label">Internal Notes &amp; Quality Specs</label>
             <textarea class="form-textarea" id="input-deal-notes" rows="2" placeholder="FFA limits, packaging condition, weighment slip terms..."></textarea>
           </div>
         </div>
@@ -1039,7 +922,7 @@
           <button type="button" class="btn btn-ghost" id="btn-cancel-new-bargain">Cancel</button>
           <button type="submit" class="btn btn-primary" id="btn-submit-new-bargain">
             <i data-lucide="check" style="width: 14px; height: 14px;"></i>
-            <span>Confirm & Issue Bargain</span>
+            <span>Confirm &amp; Issue Bargain</span>
           </button>
         </div>
       </form>
@@ -1047,59 +930,183 @@
   </div>
 
   <!-- =========================================================================
-       MODAL 4: PARTY PROFILE PAGE / MODAL
+       MODAL 3B: EDIT BARGAIN DEAL (In-Place Modification)
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-edit-bargain">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="edit-3" style="width: 18px; height: 18px; color: var(--gold);"></i>
+          <h3>Edit Bargain Contract <span id="edit-bgn-code-badge" class="bgn-tag" style="margin-left: 8px;"></span></h3>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-close-edit-bargain">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+
+      <form id="form-edit-bargain">
+        <input type="hidden" id="edit-deal-id">
+        <div class="modal-body">
+          <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid var(--gold); padding: 8px 12px; border-radius: 4px; font-size: 11.5px; color: var(--text-secondary); margin-bottom: 12px;">
+            <i data-lucide="alert-triangle" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle; color: var(--gold);"></i>
+            Modifying commercial terms (parties, commodity, quantity, rates) will automatically flag this contract as <strong>Reconfirmation Required</strong>.
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Deal Date *</label>
+              <input type="date" class="form-input" id="edit-deal-date" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contract Status</label>
+              <select class="form-select" id="edit-deal-status">
+                <option value="CONFIRMED">CONFIRMED</option>
+                <option value="PENDING">PENDING</option>
+                <option value="DRAFT">DRAFT</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Counterparties Autocomplete -->
+          <div class="form-grid-2">
+            <div class="form-group autocomplete-container">
+              <label class="form-label">Seller (Crushing Mill) *</label>
+              <input type="text" class="form-input" id="edit-seller-name" placeholder="Type mill name or station..." autocomplete="off" required>
+              <input type="hidden" id="edit-seller-id" required>
+              <div class="autocomplete-dropdown" id="edit-seller-autocomplete-dropdown"></div>
+            </div>
+
+            <div class="form-group autocomplete-container">
+              <label class="form-label">Buyer (Wholesaler / Trader) *</label>
+              <input type="text" class="form-input" id="edit-buyer-name" placeholder="Type buyer name or station..." autocomplete="off" required>
+              <input type="hidden" id="edit-buyer-id" required>
+              <div class="autocomplete-dropdown" id="edit-buyer-autocomplete-dropdown"></div>
+            </div>
+          </div>
+
+          <!-- Commodity & Quantities -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Commodity *</label>
+              <select class="form-select" id="edit-product-id" required>
+                <!-- Populated via JS -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Quantity in Quintals (Qtl) *</label>
+              <input type="number" step="any" class="form-input mono" id="edit-quantity-qtl" required>
+              <span style="font-size: 11px; color: var(--text-dim); margin-top: 2px;" id="edit-equiv-tonnes-label">= 0.0 MT</span>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Seller Rate (₹/Qtl + GST) *</label>
+              <input type="number" step="any" class="form-input mono" id="edit-seller-rate-qtl" required>
+            </div>
+
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label class="form-label" style="margin: 0;">Buyer Rate (₹/Qtl + GST) *</label>
+                <label style="font-size: 11px; color: var(--text-secondary); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; user-select: none;">
+                  <input type="checkbox" id="edit-chk-same-rate"> Same as Seller
+                </label>
+              </div>
+              <input type="number" step="any" class="form-input mono" id="edit-buyer-rate-qtl" required>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Advance Payment Due Date</label>
+              <input type="date" class="form-input" id="edit-advance-date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Delivery Condition &amp; Lifting Schedule</label>
+              <input type="text" class="form-input" id="edit-delivery-condition" placeholder="e.g. Ex-Mill Delivery...">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Internal Notes &amp; Quality Specs</label>
+            <textarea class="form-textarea" id="edit-deal-notes" rows="2" placeholder="FFA limits, packaging condition..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-edit-bargain">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-edit-bargain">
+            <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+            <span>Save Contract Changes</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 4: PARTY PROFILE / DETAILS (CLEAN STRUCTURED WORKFLOW)
        ========================================================================= -->
   <div class="modal-overlay" id="modal-party-profile">
     <div class="modal-sheet modal-sheet-lg">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <i data-lucide="building-2" style="width: 18px; height: 18px; color: var(--emerald);"></i>
-          <h3 id="profile-party-name">Party Profile</h3>
+          <i data-lucide="building-2" style="width: 17px; height: 17px; color: var(--brand);"></i>
+          <div>
+            <h3 id="profile-party-name" style="font-size: 15px; font-weight: 600; color: var(--text-primary);">Party Profile</h3>
+            <div style="font-size: 11.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; margin-top: 1px;">
+              <span id="prof-kpi-station">Mandi Station</span>
+              <span style="color: var(--border-active);">&bull;</span>
+              <span class="status-tag status-pending" id="prof-party-type" style="padding: 1px 6px; font-size: 10px;">SELLER</span>
+            </div>
+          </div>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <button class="btn btn-secondary btn-sm" id="btn-edit-party-from-profile" style="display: flex; align-items: center; gap: 6px;">
-            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+          <button class="btn btn-secondary btn-sm" id="btn-edit-party-from-profile">
+            <i data-lucide="pencil" style="width: 13px; height: 13px;"></i>
             <span>Edit Details</span>
           </button>
-          <button class="btn btn-ghost btn-sm" id="btn-close-party-profile">
+          <button class="btn btn-ghost btn-xs btn-icon-only" id="btn-close-party-profile" title="Close">
             <i data-lucide="x" style="width: 16px; height: 16px;"></i>
           </button>
         </div>
       </div>
 
-      <div class="modal-body profile-modal-body">
-        <!-- Executive KPI Strip -->
-        <div class="profile-kpi-strip">
-          <div class="profile-kpi-box">
-            <span class="kpi-title">Total Deals</span>
-            <span class="kpi-value" id="prof-kpi-deals">0</span>
+      <div class="modal-body" style="padding: 18px 20px;">
+        <!-- Compact Useful Statistics Strip (Clean Horizontal Summary) -->
+        <div class="party-summary-strip">
+          <div class="party-summary-item">
+            <span>Deals:</span>
+            <strong class="party-summary-val" id="prof-kpi-deals">0</strong>
           </div>
-          <div class="profile-kpi-box">
-            <span class="kpi-title">Traded Volume</span>
-            <span class="kpi-value" id="prof-kpi-volume" style="color: var(--emerald);">0 MT</span>
+          <span style="color: var(--border-active);">&bull;</span>
+          <div class="party-summary-item">
+            <span>Volume:</span>
+            <strong class="party-summary-val" id="prof-kpi-volume">0 MT</strong>
           </div>
-          <div class="profile-kpi-box">
-            <span class="kpi-title">Pending Deals</span>
-            <span class="kpi-value" id="prof-kpi-pending" style="color: var(--gold);">0</span>
-          </div>
-          <div class="profile-kpi-box">
-            <span class="kpi-title">Mandi Station</span>
-            <span class="kpi-value" id="prof-kpi-station" style="font-size: 13px; font-weight: 600; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">—</span>
+          <span style="color: var(--border-active);">&bull;</span>
+          <div class="party-summary-item">
+            <span>Pending:</span>
+            <strong class="party-summary-val" id="prof-kpi-pending">0</strong>
           </div>
         </div>
 
-        <!-- Tabbed Navigation -->
-        <div class="profile-tabs" id="party-profile-tabs">
-          <button class="profile-tab-btn active" data-tab="contacts">Overview & Contacts</button>
-          <button class="profile-tab-btn" data-tab="deals">Recent Deals Register</button>
-          <button class="profile-tab-btn" data-tab="commodities">Commodity History</button>
+        <!-- Non-Default Professional Tabs -->
+        <div class="profile-tabs-clean" id="party-profile-tabs">
+          <button class="profile-tab-btn-clean active" data-tab="contacts">Overview</button>
+          <button class="profile-tab-btn-clean" data-tab="deals">Deals Register</button>
+          <button class="profile-tab-btn-clean" data-tab="commodities">Commodity History</button>
         </div>
 
         <!-- Tab 1: Overview & Contacts -->
         <div id="tab-pane-prof-contacts" style="display: flex; flex-direction: column; gap: 14px;">
-          <div id="prof-meta-details" style="font-size: 13px; color: var(--text-muted); line-height: 1.6;"></div>
-          <h4 style="font-size: 13px; font-weight: 700; color: #FFFFFF; text-transform: uppercase;">Contact Hierarchy</h4>
-          <div class="contact-hierarchy-list" id="prof-contacts-list"></div>
+          <div id="prof-meta-details"></div>
+          <div>
+            <h4 style="font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px;">Contact Hierarchy</h4>
+            <div class="contact-hierarchy-list" id="prof-contacts-list"></div>
+          </div>
         </div>
 
         <!-- Tab 2: Recent Deals -->
@@ -1272,9 +1279,9 @@
   <div class="modal-overlay" id="modal-command-palette">
     <div class="modal-sheet command-palette-sheet">
       <div class="command-input-row">
-        <i data-lucide="search" style="width: 18px; height: 18px; color: var(--emerald);"></i>
-        <input type="text" class="command-search-input" id="command-palette-input" placeholder="Type a command, deal ID, party name..." autocomplete="off">
-        <kbd>ESC to exit</kbd>
+        <i data-lucide="search" style="width: 16px; height: 16px; color: var(--text-secondary);"></i>
+        <input type="text" class="command-search-input" id="command-palette-input" placeholder="Search or run a command..." autocomplete="off">
+        <kbd style="font-size: 10.5px; padding: 2px 6px; border-radius: 4px; background: var(--bg-subtle); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-family: var(--font-mono);">Esc</kbd>
       </div>
       <div class="command-results-list" id="command-palette-results">
         <!-- Injected via JS -->
@@ -1424,6 +1431,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Application Logic -->
-  <script src="/static/js/app.js"></script>
+  <script src="/static/js/app.js?v=20260911_v3"></script>
 </body>
 </html>

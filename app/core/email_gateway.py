@@ -228,43 +228,88 @@ def send_deal_contract_email(
     deal_dict: Dict[str, Any],
     recipient_email: str,
     recipient_name: Optional[str] = None,
+    recipient_role: Optional[str] = None,
     custom_subject: Optional[str] = None,
     custom_body: Optional[str] = None,
     db_path: str = DB_PATH
 ) -> Dict[str, Any]:
     """
-    Sends an official contract email directly through Rediffmail SMTP with the official
-    system-generated PDF attached. Also automatically logs the event in dispatch_logs.
+    Sends an official contract email directly through Rediffmail / SMTP with the official
+    system-generated PDF attached. Strictly enforces rate confidentiality.
     """
     cfg = get_email_config(db_path, mask_password=False)
-    if not cfg.get('smtp_pass'):
-        return {
-            'success': False,
-            'status': 'NEEDS_CONFIG',
-            'error': "Rediffmail is not configured. Please enter your Rediffmail password in Settings."
-        }
-
-    clean_to = recipient_email.strip()
+    clean_to = (recipient_email or '').strip()
     if not clean_to or '@' not in clean_to:
         return {
             'success': False,
             'status': 'INVALID_EMAIL',
-            'error': f"Invalid recipient email address: '{recipient_email}'"
+            'error': f"Invalid or missing recipient email address: '{recipient_email}'"
         }
 
-    bgn = deal_dict.get('bgn_code') or deal_dict.get('id')
-    from app.core.pdf_generator import generate_deal_contract_pdf
-    pdf_bytes = generate_deal_contract_pdf(deal_dict)
-    filename = f"Bargain_Confirmation_{bgn}.pdf"
+    # Determine recipient role if not specified
+    if not recipient_role:
+        if clean_to == str(deal_dict.get('seller_email') or '').strip():
+            recipient_role = 'SELLER'
+        elif clean_to == str(deal_dict.get('buyer_email') or '').strip():
+            recipient_role = 'BUYER'
+        else:
+            recipient_role = 'BUYER'
 
-    subject = custom_subject or f"Bargain Confirmation [{bgn}] — Ganesh & Company, Sri Ganganagar"
+    bgn = deal_dict.get('bgn_code') or deal_dict.get('id')
+    seller_name = deal_dict.get('seller_name', '')
+    buyer_name = deal_dict.get('buyer_name', '')
+    recip = recipient_name or (seller_name if recipient_role == 'SELLER' else buyer_name) or "Valued Counterparty"
+
+    if not cfg.get('smtp_pass') and os.environ.get('MOCK_EMAIL') != '1':
+        # Record attempt in dispatch_logs as NEEDS_CONFIG
+        try:
+            conn = get_db_connection(db_path)
+            cur = conn.cursor()
+            import uuid
+            log_id = f"LOG-{uuid.uuid4().hex[:8].upper()}"
+            cur.execute("""
+                INSERT INTO dispatch_logs (id, deal_id, recipient_type, recipient_name, channel, phone_or_email, message_preview, status, created_at)
+                VALUES (?, ?, ?, ?, 'EMAIL', ?, ?, 'NEEDS_CONFIG', datetime('now'))
+            """, (
+                log_id,
+                deal_dict.get('id'),
+                recipient_role,
+                recip,
+                clean_to,
+                f"Bargain Confirmation PDF [{bgn}] ({recipient_role}) - SMTP not configured"
+            ))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+        return {
+            'success': False,
+            'status': 'NEEDS_CONFIG',
+            'role': recipient_role,
+            'recipient': clean_to,
+            'error': "Email gateway is not configured. Please enter your password in Email Gateway Settings."
+        }
+    from app.core.pdf_generator import generate_deal_contract_pdf
+    pdf_bytes = generate_deal_contract_pdf(deal_dict, recipient_role=recipient_role)
+    filename = f"Bargain_Confirmation_{bgn}_{recipient_role}.pdf"
+
+    subject = custom_subject or f"Bargain Confirmation [{bgn}] ({recipient_role} COPY) — Ganesh & Company"
     seller_name = deal_dict.get('seller_name', '')
     buyer_name = deal_dict.get('buyer_name', '')
     product_name = deal_dict.get('product_name', '')
     quantity = deal_dict.get('quantity_tonnes', 0)
-    rate = deal_dict.get('rate_per_qtl', 0)
+    
+    # Confidential rate isolation
+    if recipient_role == 'SELLER':
+        rate = float(deal_dict.get('seller_rate') if deal_dict.get('seller_rate') is not None else deal_dict.get('rate_per_qtl', 0))
+    elif recipient_role == 'BUYER':
+        rate = float(deal_dict.get('buyer_rate') if deal_dict.get('buyer_rate') is not None else deal_dict.get('rate_per_qtl', 0))
+    else:
+        rate = float(deal_dict.get('seller_rate') or deal_dict.get('rate_per_qtl', 0))
+
     deal_date = deal_dict.get('deal_date', '')
-    recip = recipient_name or buyer_name or "Valued Client"
+    recip = recipient_name or (seller_name if recipient_role == 'SELLER' else buyer_name) or "Valued Counterparty"
 
     # Assemble multipart message
     msg = MIMEMultipart("mixed")
@@ -279,7 +324,7 @@ def send_deal_contract_email(
 
     text_body = custom_body or (
         f"Dear Sir/Madam ({recip}),\n\n"
-        f"Please find attached the official Bargain Confirmation for Bargain No. {bgn}.\n\n"
+        f"Please find attached the official Bargain Confirmation for Bargain No. {bgn} ({recipient_role} Copy).\n\n"
         f"CONTRACT SUMMARY:\n"
         f"• Bargain No: {bgn}\n"
         f"• Deal Date: {deal_date}\n"
@@ -314,7 +359,6 @@ def send_deal_contract_email(
             .table td {{ padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }}
             .table td.label {{ color: #6b7280; font-weight: 600; width: 38%; }}
             .table td.val {{ color: #111827; font-weight: 700; }}
-            .btn-link {{ display: inline-block; background-color: #059669; color: #ffffff !important; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px; margin-top: 12px; }}
             .footer {{ background: #f9fafb; padding: 16px 24px; font-size: 12px; color: #6b7280; text-align: center; border-top: 1px solid #e5e7eb; }}
         </style>
     </head>
@@ -327,12 +371,12 @@ def send_deal_contract_email(
             <div class="content">
                 <p style="font-size: 15px; margin-top: 0;">Dear <strong>{recip}</strong>,</p>
                 <p style="font-size: 14px; color: #4b5563;">
-                    We are pleased to confirm the following agricultural commodity bargain executed through our brokerage firm:
+                    We are pleased to confirm the following bargain executed through our brokerage firm:
                 </p>
 
                 <div class="card">
                     <div style="font-size: 12px; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
-                        Contract Summary &bull; {bgn}
+                        Contract Summary &bull; {bgn} ({recipient_role} Copy)
                     </div>
                     <table class="table">
                         <tr><td class="label">Bargain No.</td><td class="val">{bgn}</td></tr>
@@ -350,12 +394,12 @@ def send_deal_contract_email(
                 <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 14px 16px; border-radius: 4px; margin: 20px 0;">
                     <div style="font-weight: 700; color: #065f46; font-size: 13px;">📎 Official PDF Attached</div>
                     <div style="font-size: 13px; color: #047857; margin-top: 2px;">
-                        The full official agreement <strong>{filename}</strong> is attached to this email. Please review the terms and preserve for records.
+                        The official {recipient_role} copy <strong>{filename}</strong> is attached to this email.
                     </div>
                 </div>
 
                 <p style="font-size: 13px; color: #6b7280; margin-bottom: 0;">
-                    Subject to Sri Ganganagar Jurisdiction. For any revisions or queries, please contact our dispatch desk immediately.
+                    Subject to Sri Ganganagar Jurisdiction. For any revisions, contact our desk immediately.
                 </p>
             </div>
             <div class="footer">
@@ -378,13 +422,15 @@ def send_deal_contract_email(
     msg.attach(pdf_attachment)
 
     try:
-        server = _connect_smtp(cfg)
-        server.sendmail(cfg.get('from_email'), [clean_to], msg.as_string())
-        server.quit()
+        if os.environ.get('MOCK_EMAIL') == '1':
+            logger.info(f"[MOCK_EMAIL] Simulated delivery of {recipient_role} contract email for deal {bgn} to {clean_to}")
+        else:
+            server = _connect_smtp(cfg)
+            server.sendmail(cfg.get('from_email'), [clean_to], msg.as_string())
+            server.quit()
 
         # Log dispatch
-        recip_type = 'SELLER' if clean_to in str(deal_dict.get('seller_email') or '') else 'BUYER'
-        recip_name = deal_dict.get('seller_name') if recip_type == 'SELLER' else deal_dict.get('buyer_name')
+        recip_name = seller_name if recipient_role == 'SELLER' else buyer_name
         
         try:
             conn = get_db_connection(db_path)
@@ -397,30 +443,140 @@ def send_deal_contract_email(
             """, (
                 log_id,
                 deal_dict.get('id'),
-                recip_type,
+                recipient_role,
                 recip_name or recip,
                 clean_to,
-                f"Bargain Confirmation PDF [{bgn}]"
+                f"Bargain Confirmation PDF [{bgn}] ({recipient_role})"
             ))
             conn.commit()
             conn.close()
         except Exception as log_err:
             logger.warning(f"Could not write to dispatch_logs: {log_err}")
 
-        logger.info(f"Successfully sent contract email for deal {bgn} to {clean_to}")
+        logger.info(f"Successfully sent {recipient_role} contract email for deal {bgn} to {clean_to}")
         return {
             'success': True,
             'status': 'SENT',
-            'provider': 'REDIFFMAIL',
+            'role': recipient_role,
+            'provider': cfg.get('provider', 'SMTP'),
             'recipient': clean_to,
             'filename': filename,
-            'message': f"Official contract PDF delivered to {clean_to} via Rediffmail!"
+            'message': f"Official {recipient_role} contract PDF delivered to {clean_to}!"
         }
 
     except Exception as send_err:
-        logger.error(f"Failed to send email via Rediffmail: {send_err}", exc_info=True)
+        logger.error(f"Failed to send {recipient_role} email: {send_err}", exc_info=True)
+        # Log failure
+        try:
+            conn = get_db_connection(db_path)
+            cur = conn.cursor()
+            import uuid
+            log_id = f"LOG-{uuid.uuid4().hex[:8].upper()}"
+            cur.execute("""
+                INSERT INTO dispatch_logs (id, deal_id, recipient_type, recipient_name, channel, phone_or_email, message_preview, status, created_at)
+                VALUES (?, ?, ?, ?, 'EMAIL', ?, ?, 'FAILED', datetime('now'))
+            """, (
+                log_id,
+                deal_dict.get('id'),
+                recipient_role,
+                recip,
+                clean_to,
+                f"Failed email: {str(send_err)[:100]}"
+            ))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
         return {
             'success': False,
             'status': 'SEND_FAILED',
-            'error': f"Rediffmail send error: {str(send_err)}"
+            'role': recipient_role,
+            'recipient': clean_to,
+            'error': f"Send error: {str(send_err)}"
         }
+
+
+def send_deal_contract_emails_both(
+    deal_dict: Dict[str, Any],
+    custom_subject: Optional[str] = None,
+    custom_body: Optional[str] = None,
+    db_path: str = DB_PATH
+) -> Dict[str, Any]:
+    """
+    Sends TWO separate, completely isolated emails:
+    1. To Seller with Seller Rate ONLY.
+    2. To Buyer with Buyer Rate ONLY.
+    Never combines To or CC.
+    Accurately handles and reports partial success if one email is missing/fails.
+    """
+    seller_email = (deal_dict.get('seller_email') or '').strip()
+    buyer_email = (deal_dict.get('buyer_email') or '').strip()
+
+    seller_result = None
+    buyer_result = None
+
+    # 1. Send Seller Email
+    if seller_email and '@' in seller_email:
+        seller_result = send_deal_contract_email(
+            deal_dict=deal_dict,
+            recipient_email=seller_email,
+            recipient_name=deal_dict.get('seller_name'),
+            recipient_role='SELLER',
+            custom_subject=custom_subject,
+            custom_body=custom_body,
+            db_path=db_path
+        )
+    else:
+        seller_result = {
+            'success': False,
+            'status': 'MISSING_EMAIL',
+            'role': 'SELLER',
+            'recipient': seller_email,
+            'error': "Seller email not found in Party Directory"
+        }
+
+    # 2. Send Buyer Email
+    if buyer_email and '@' in buyer_email:
+        buyer_result = send_deal_contract_email(
+            deal_dict=deal_dict,
+            recipient_email=buyer_email,
+            recipient_name=deal_dict.get('buyer_name'),
+            recipient_role='BUYER',
+            custom_subject=custom_subject,
+            custom_body=custom_body,
+            db_path=db_path
+        )
+    else:
+        buyer_result = {
+            'success': False,
+            'status': 'MISSING_EMAIL',
+            'role': 'BUYER',
+            'recipient': buyer_email,
+            'error': "Buyer email not found in Party Directory"
+        }
+
+    s_ok = bool(seller_result.get('success'))
+    b_ok = bool(buyer_result.get('success'))
+
+    if s_ok and b_ok:
+        msg = "✓ Both Seller and Buyer emails sent successfully with respective rates."
+        status = "ALL_SENT"
+    elif s_ok and not b_ok:
+        msg = f"✓ Seller email sent | ⚠ Buyer: {buyer_result.get('error', 'Failed')}"
+        status = "PARTIAL_SELLER_ONLY"
+    elif b_ok and not s_ok:
+        msg = f"✓ Buyer email sent | ⚠ Seller: {seller_result.get('error', 'Failed')}"
+        status = "PARTIAL_BUYER_ONLY"
+    else:
+        msg = f"✕ Failed to dispatch emails (Seller: {seller_result.get('error')}, Buyer: {buyer_result.get('error')})"
+        status = "ALL_FAILED"
+
+    return {
+        'success': s_ok and b_ok,
+        'partial': (s_ok or b_ok) and not (s_ok and b_ok),
+        'status': status,
+        'message': msg,
+        'seller': seller_result,
+        'buyer': buyer_result
+    }

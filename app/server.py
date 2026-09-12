@@ -102,7 +102,7 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self.serve_standalone_contract(deal_id)
 
         # Serve SPA Index
-        if path in ('/', '/index.html', '/deals', '/bargains', '/parties', '/dispatches', '/market-rates', '/reports', '/trash', '/chains', '/billing', '/ledger', '/masters', '/busy', '/tests'):
+        if path in ('/', '/index.html', '/deals', '/bargains', '/parties', '/dispatches', '/trash', '/chains', '/billing', '/ledger', '/masters', '/busy', '/tests'):
             index_path = os.path.join(TEMPLATES_DIR, "index.html")
             if os.path.exists(index_path):
                 return self.serve_file(index_path, content_type="text/html; charset=utf-8")
@@ -141,11 +141,6 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 conn.close()
                 return self.send_json_response(products)
 
-            elif path == '/api/market-rates':
-                conn.close()
-                rates = api_routes.get_market_rates()
-                return self.send_json_response(rates)
-
             elif path == '/api/dispatch-logs':
                 conn.close()
                 logs = api_routes.get_dispatch_logs()
@@ -166,12 +161,15 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 sql = """
                     SELECT 
                         d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,
+                        COALESCE(d.seller_rate, d.rate_per_qtl) AS seller_rate,
+                        COALESCE(d.buyer_rate, d.rate_per_qtl) AS buyer_rate,
+                        COALESCE(d.reconfirmation_required, 0) AS reconfirmation_required,
                         b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station,
                         b.trade_name AS buyer_trade_name, b.gstin AS buyer_gstin, b.pan AS buyer_pan,
-                        b.phone AS buyer_phone, b.contacts_json AS buyer_contacts,
+                        b.email AS buyer_email, b.phone AS buyer_phone, b.contacts_json AS buyer_contacts,
                         s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
                         s.trade_name AS seller_trade_name, s.gstin AS seller_gstin, s.pan AS seller_pan,
-                        s.phone AS seller_phone, s.contacts_json AS seller_contacts,
+                        s.email AS seller_email, s.phone AS seller_phone, s.contacts_json AS seller_contacts,
                         p.name AS product_name, c.original_bill_seller_id, c.final_bill_buyer_id,
                         (SELECT status FROM dispatch_logs WHERE (deal_id = d.id OR deal_id = d.bgn_code) AND channel = 'WHATSAPP' ORDER BY created_at DESC LIMIT 1) AS wa_dispatch_status,
                         (SELECT created_at FROM dispatch_logs WHERE (deal_id = d.id OR deal_id = d.bgn_code) AND channel = 'WHATSAPP' ORDER BY created_at DESC LIMIT 1) AS wa_dispatch_time,
@@ -232,9 +230,17 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif path.startswith('/api/deals/') and path.endswith('/pdf'):
                 raw_id = path.split('/')[3]
                 deal_id = re.sub(r'[^a-zA-Z0-9_-]', '', urllib.parse.unquote(raw_id))
+                role_param = query_params.get('role', [None])[0]
+                if role_param:
+                    role_param = role_param.upper().strip()
+                    if role_param not in ('SELLER', 'BUYER'):
+                        role_param = None
+
                 cur.execute("""
                     SELECT 
                         d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,
+                        COALESCE(d.seller_rate, d.rate_per_qtl) AS seller_rate,
+                        COALESCE(d.buyer_rate, d.rate_per_qtl) AS buyer_rate,
                         b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station,
                         s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
                         p.name AS product_name
@@ -250,9 +256,10 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     return self.send_error_json("Deal not found", 404)
                 deal_dict = dict(deal_row)
                 from app.core.pdf_generator import generate_deal_contract_pdf
-                pdf_data = generate_deal_contract_pdf(deal_dict)
+                pdf_data = generate_deal_contract_pdf(deal_dict, recipient_role=role_param)
                 bgn = deal_dict.get('bgn_code') or deal_dict.get('id')
-                filename = f"Bargain_Confirmation_{bgn}.pdf"
+                role_suffix = f"_{role_param}" if role_param else ""
+                filename = f"Bargain_Confirmation_{bgn}{role_suffix}.pdf"
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/pdf')
                 self.send_header('Content-Disposition', f'inline; filename="{filename}"')
@@ -307,6 +314,122 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         "status": "DELIVERED" if (email_log and email_log.get('status') in ('SENT', 'DELIVERED')) else (email_log.get('status') if email_log else "NOT_SENT"),
                         "timestamp": email_log.get('created_at') if email_log else None,
                         "recipient": email_log.get('phone_or_email') if email_log else None
+                    }
+                })
+
+            elif path.startswith('/api/deals/') and path.endswith('/confirmation-details'):
+                raw_id = path.split('/')[3]
+                deal_id = re.sub(r'[^a-zA-Z0-9_-]', '', urllib.parse.unquote(raw_id))
+                cur.execute("""
+                    SELECT d.*, COALESCE(d.bgn_code, d.id) as bgn_code,
+                           p.name AS product_name
+                    FROM deals d
+                    JOIN products p ON d.product_id = p.id
+                    WHERE d.id = ? OR d.bgn_code = ?
+                """, (deal_id, deal_id))
+                d_row = cur.fetchone()
+                if not d_row:
+                    conn.close()
+                    return self.send_error_json("Deal not found", 404)
+
+                deal_dict = dict(d_row)
+                real_id = deal_dict['id']
+                real_bgn = deal_dict['bgn_code']
+
+                # Direct lookup from Party Directory for Seller
+                cur.execute("""
+                    SELECT id, legal_name, trade_name, mandi_station, city, state, contact_person, phone, email
+                    FROM parties
+                    WHERE id = ?
+                """, (deal_dict['seller_id'],))
+                s_row = cur.fetchone()
+                seller_party = dict(s_row) if s_row else {'id': deal_dict['seller_id'], 'legal_name': 'Seller', 'phone': '', 'email': ''}
+
+                # Direct lookup from Party Directory for Buyer
+                cur.execute("""
+                    SELECT id, legal_name, trade_name, mandi_station, city, state, contact_person, phone, email
+                    FROM parties
+                    WHERE id = ?
+                """, (deal_dict['buyer_id'],))
+                b_row = cur.fetchone()
+                buyer_party = dict(b_row) if b_row else {'id': deal_dict['buyer_id'], 'legal_name': 'Buyer', 'phone': '', 'email': ''}
+
+                # Fetch dispatch logs
+                cur.execute("""
+                    SELECT channel, status, phone_or_email, created_at, recipient_type
+                    FROM dispatch_logs
+                    WHERE deal_id = ? OR deal_id = ?
+                    ORDER BY created_at DESC
+                """, (real_id, real_bgn))
+                logs = [dict(r) for r in cur.fetchall()]
+                conn.close()
+
+                seller_rate = float(deal_dict['seller_rate'] if deal_dict.get('seller_rate') is not None else deal_dict.get('rate_per_qtl', 0))
+                buyer_rate = float(deal_dict['buyer_rate'] if deal_dict.get('buyer_rate') is not None else deal_dict.get('rate_per_qtl', 0))
+                qty_qtl = float(deal_dict.get('quantity_qtl', 0))
+                qty_tonnes = float(deal_dict.get('quantity_tonnes') or (qty_qtl * 0.1))
+
+                s_email_log = next((l for l in logs if l.get('channel') == 'EMAIL' and l.get('recipient_type') == 'SELLER'), None)
+                if not s_email_log and (seller_party.get('email') or '').strip():
+                    s_email_log = next((l for l in logs if l.get('channel') == 'EMAIL' and l.get('phone_or_email') == seller_party['email'].strip()), None)
+
+                b_email_log = next((l for l in logs if l.get('channel') == 'EMAIL' and l.get('recipient_type') == 'BUYER'), None)
+                if not b_email_log and (buyer_party.get('email') or '').strip():
+                    b_email_log = next((l for l in logs if l.get('channel') == 'EMAIL' and l.get('phone_or_email') == buyer_party['email'].strip()), None)
+
+                s_wa_log = next((l for l in logs if l.get('channel') == 'WHATSAPP' and l.get('recipient_type') == 'SELLER'), None)
+                b_wa_log = next((l for l in logs if l.get('channel') == 'WHATSAPP' and l.get('recipient_type') == 'BUYER'), None)
+
+                return self.send_json_response({
+                    "deal": {
+                        "id": real_id,
+                        "bgn_code": real_bgn,
+                        "deal_date": deal_dict.get('deal_date'),
+                        "product_name": deal_dict.get('product_name'),
+                        "quantity_qtl": qty_qtl,
+                        "quantity_tonnes": qty_tonnes,
+                        "seller_rate": seller_rate,
+                        "buyer_rate": buyer_rate,
+                        "advance_payment_date": deal_dict.get('advance_payment_date') or deal_dict.get('deal_date'),
+                        "delivery_condition": deal_dict.get('delivery_condition') or 'Ex-Mill Lifting as per contract'
+                    },
+                    "seller": {
+                        "id": seller_party.get('id'),
+                        "party_id": seller_party.get('id'),
+                        "legal_name": seller_party.get('legal_name'),
+                        "name": seller_party.get('trade_name') or seller_party.get('legal_name'),
+                        "station": seller_party.get('mandi_station') or seller_party.get('city') or '',
+                        "state": seller_party.get('state') or '',
+                        "contact_person": seller_party.get('contact_person') or '',
+                        "email": (seller_party.get('email') or '').strip(),
+                        "phone": (seller_party.get('phone') or '').strip(),
+                        "has_email": bool((seller_party.get('email') or '').strip()),
+                        "has_phone": bool((seller_party.get('phone') or '').strip()),
+                        "rate": seller_rate
+                    },
+                    "buyer": {
+                        "id": buyer_party.get('id'),
+                        "party_id": buyer_party.get('id'),
+                        "legal_name": buyer_party.get('legal_name'),
+                        "name": buyer_party.get('trade_name') or buyer_party.get('legal_name'),
+                        "station": buyer_party.get('mandi_station') or buyer_party.get('city') or '',
+                        "state": buyer_party.get('state') or '',
+                        "contact_person": buyer_party.get('contact_person') or '',
+                        "email": (buyer_party.get('email') or '').strip(),
+                        "phone": (buyer_party.get('phone') or '').strip(),
+                        "has_email": bool((buyer_party.get('email') or '').strip()),
+                        "has_phone": bool((buyer_party.get('phone') or '').strip()),
+                        "rate": buyer_rate
+                    },
+                    "dispatch_status": {
+                        "seller_email": s_email_log.get('status') if s_email_log else 'NOT_SENT',
+                        "seller_email_time": s_email_log.get('created_at') if s_email_log else None,
+                        "buyer_email": b_email_log.get('status') if b_email_log else 'NOT_SENT',
+                        "buyer_email_time": b_email_log.get('created_at') if b_email_log else None,
+                        "seller_wa": s_wa_log.get('status') if s_wa_log else 'NOT_SENT',
+                        "seller_wa_time": s_wa_log.get('created_at') if s_wa_log else None,
+                        "buyer_wa": b_wa_log.get('status') if b_wa_log else 'NOT_SENT',
+                        "buyer_wa_time": b_wa_log.get('created_at') if b_wa_log else None
                     }
                 })
 
@@ -435,6 +558,19 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif path == '/api/deals/resell':
                 result = api_routes.resell_and_link_deal(body, actor_name=actor_name, actor_role=actor_role)
                 return self.send_json_response(result, 201)
+
+            elif path.startswith('/api/deals/') and path.endswith('/edit'):
+                deal_id = path.split('/')[3]
+                result = api_routes.update_deal(deal_id, body, actor_name=actor_name, actor_role=actor_role)
+                return self.send_json_response(result)
+
+            elif path == '/api/deals/bulk-delete':
+                result = api_routes.bulk_soft_delete_deals(body.get('deal_ids', []), actor_name=actor_name, actor_role=actor_role)
+                return self.send_json_response(result)
+
+            elif path == '/api/deals/bulk-restore':
+                result = api_routes.bulk_restore_deals(body.get('deal_ids', []), actor_name=actor_name, actor_role=actor_role)
+                return self.send_json_response(result)
 
             elif path.startswith('/api/deals/') and path.endswith('/trash'):
                 deal_id = path.split('/')[3]
@@ -566,23 +702,20 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             elif path == '/api/email/send-document':
                 deal_id = body.get('deal_id')
-                recipient_email = body.get('recipient_email', '')
-                recipient_name = body.get('recipient_name', '')
-                subject = body.get('subject')
-                body_text = body.get('body')
-
-                if not deal_id or not recipient_email:
-                    return self.send_error_json("deal_id and recipient_email are required", 400)
+                if not deal_id:
+                    return self.send_error_json("deal_id is required", 400)
 
                 conn = get_db_connection()
                 cur = conn.cursor()
                 cur.execute("""
                     SELECT 
                         d.*, COALESCE(d.bgn_code, d.id) AS bgn_code,
+                        COALESCE(d.seller_rate, d.rate_per_qtl) AS seller_rate,
+                        COALESCE(d.buyer_rate, d.rate_per_qtl) AS buyer_rate,
                         b.legal_name AS buyer_name, COALESCE(b.mandi_station, b.city) AS buyer_station,
-                        b.email AS buyer_email,
+                        b.email AS buyer_email, b.phone AS buyer_phone,
                         s.legal_name AS seller_name, COALESCE(s.mandi_station, s.city) AS seller_station,
-                        s.email AS seller_email,
+                        s.email AS seller_email, s.phone AS seller_phone,
                         p.name AS product_name
                     FROM deals d
                     JOIN parties b ON d.buyer_id = b.id
@@ -597,16 +730,58 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     return self.send_error_json("Deal not found", 404)
 
                 deal_dict = dict(d_row)
-                from app.core.email_gateway import send_deal_contract_email
-                send_res = send_deal_contract_email(
-                    deal_dict=deal_dict,
-                    recipient_email=recipient_email,
-                    recipient_name=recipient_name,
-                    custom_subject=subject,
-                    custom_body=body_text
-                )
-                status_code = 200 if send_res.get('success') else 400
-                return self.send_json_response(send_res, status_code)
+                target = (body.get('target') or '').upper().strip()
+                subject = body.get('subject')
+                body_text = body.get('body')
+
+                from app.core.email_gateway import send_deal_contract_email, send_deal_contract_emails_both
+
+                if target == 'BOTH':
+                    both_res = send_deal_contract_emails_both(deal_dict, custom_subject=subject, custom_body=body_text)
+                    return self.send_json_response(both_res)
+                elif target == 'SELLER':
+                    seller_em = (deal_dict.get('seller_email') or '').strip()
+                    if not seller_em:
+                        return self.send_error_json("Seller email address is not recorded in Party Directory", 400)
+                    send_res = send_deal_contract_email(
+                        deal_dict=deal_dict,
+                        recipient_email=seller_em,
+                        recipient_name=deal_dict.get('seller_name'),
+                        recipient_role='SELLER',
+                        custom_subject=subject,
+                        custom_body=body_text
+                    )
+                    status_code = 200 if send_res.get('success') else 400
+                    return self.send_json_response(send_res, status_code)
+                elif target == 'BUYER':
+                    buyer_em = (deal_dict.get('buyer_email') or '').strip()
+                    if not buyer_em:
+                        return self.send_error_json("Buyer email address is not recorded in Party Directory", 400)
+                    send_res = send_deal_contract_email(
+                        deal_dict=deal_dict,
+                        recipient_email=buyer_em,
+                        recipient_name=deal_dict.get('buyer_name'),
+                        recipient_role='BUYER',
+                        custom_subject=subject,
+                        custom_body=body_text
+                    )
+                    status_code = 200 if send_res.get('success') else 400
+                    return self.send_json_response(send_res, status_code)
+                else:
+                    recipient_email = body.get('recipient_email') or deal_dict.get('buyer_email') or deal_dict.get('seller_email')
+                    if not recipient_email:
+                        return self.send_error_json("recipient_email is required", 400)
+                    role = body.get('role')
+                    send_res = send_deal_contract_email(
+                        deal_dict=deal_dict,
+                        recipient_email=recipient_email,
+                        recipient_name=body.get('recipient_name'),
+                        recipient_role=role,
+                        custom_subject=subject,
+                        custom_body=body_text
+                    )
+                    status_code = 200 if send_res.get('success') else 400
+                    return self.send_json_response(send_res, status_code)
 
             elif path == '/api/dispatch/send-both':
                 deal_id = body.get('deal_id')
@@ -643,7 +818,11 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
                 deal_dict = dict(d_row)
                 bgn = deal_dict.get('bgn_code') or deal_dict.get('id')
-                filename = f"Bargain_Confirmation_{bgn}.pdf"
+                role_param = (body.get('role') or '').strip().upper()
+                if role_param not in ['SELLER', 'BUYER']:
+                    role_param = None
+
+                filename = f"Bargain_Confirmation_{bgn}_{role_param or 'OFFICIAL'}.pdf"
 
                 results = {
                     "success": True,
@@ -658,15 +837,19 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     try:
                         from app.core.pdf_generator import generate_deal_contract_pdf
                         from app.core.whatsapp_gateway import send_whatsapp_pdf_document
-                        pdf_bytes = generate_deal_contract_pdf(deal_dict)
+                        pdf_bytes = generate_deal_contract_pdf(deal_dict, recipient_role=role_param)
+                        recip_type = role_param if role_param else ('SELLER' if phone in str(deal_dict.get('seller_phone') or '') else 'BUYER')
+                        recip_name = deal_dict.get('seller_name') if recip_type == 'SELLER' else deal_dict.get('buyer_name')
+                        rate_for_recip = deal_dict.get('seller_rate') if recip_type == 'SELLER' else deal_dict.get('buyer_rate')
+                        if rate_for_recip is None:
+                            rate_for_recip = deal_dict.get('rate_per_qtl', 0)
+
                         if not caption:
-                            caption = f"*BARGAIN CONFIRMATION — GANESH & COMPANY*\nBargain No: {bgn}\nCommodity: {deal_dict.get('product_name')}\nQuantity: {deal_dict.get('quantity_tonnes')} MT\nRate: Rs. {deal_dict.get('rate_per_qtl')}/Qtl + GST"
+                            caption = f"*BARGAIN CONFIRMATION — GANESH & COMPANY* ({recip_type} COPY)\nBargain No: {bgn}\nCommodity: {deal_dict.get('product_name')}\nQuantity: {deal_dict.get('quantity_tonnes')} MT\nRate: Rs. {rate_for_recip}/Qtl + GST"
                         
                         wa_res = send_whatsapp_pdf_document(phone, pdf_bytes, filename, caption)
                         results["whatsapp"] = wa_res
                         if wa_res.get('success'):
-                            recip_type = 'SELLER' if phone in str(deal_dict.get('seller_phone') or '') else 'BUYER'
-                            recip_name = deal_dict.get('seller_name') if recip_type == 'SELLER' else deal_dict.get('buyer_name')
                             api_routes.create_dispatch_log({
                                 'deal_id': deal_dict['id'],
                                 'recipient_type': recip_type,
@@ -686,10 +869,13 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if recipient_email:
                     try:
                         from app.core.email_gateway import send_deal_contract_email
+                        recip_type = role_param if role_param else ('SELLER' if recipient_email == str(deal_dict.get('seller_email') or '').strip() else 'BUYER')
+                        recip_name = deal_dict.get('seller_name') if recip_type == 'SELLER' else deal_dict.get('buyer_name')
                         em_res = send_deal_contract_email(
                             deal_dict=deal_dict,
                             recipient_email=recipient_email,
-                            recipient_name=deal_dict.get('buyer_name') or deal_dict.get('seller_name'),
+                            recipient_name=recip_name,
+                            recipient_role=recip_type,
                             custom_subject=subject or None,
                             custom_body=body_text or None
                         )
@@ -722,7 +908,11 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         try:
             body = self.read_json_body()
-            if path == '/api/parties' or (path.startswith('/api/parties/') and not path.endswith('/profile')):
+            if path.startswith('/api/deals/'):
+                deal_id = path.split('/')[3]
+                result = api_routes.update_deal(deal_id, body, actor_name, actor_role)
+                return self.send_json_response(result)
+            elif path == '/api/parties' or (path.startswith('/api/parties/') and not path.endswith('/profile')):
                 if path.startswith('/api/parties/'):
                     p_id = path.split('/')[3]
                     if not body.get('id'):
@@ -873,7 +1063,16 @@ class BrokerageHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             conn.close()
             raise ValueError("Party legal name is required.")
 
-        party_id = data.get('id') or f"PTY-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        party_id = data.get('id')
+        if not party_id:
+            cur.execute("SELECT id FROM parties WHERE legal_name = ?", (legal_name,))
+            matched = cur.fetchone()
+            if matched:
+                party_id = matched['id']
+            else:
+                import uuid
+                party_id = f"PTY-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4].upper()}"
+
         now_iso = datetime.now().isoformat()
 
         # Fetch existing record if any to preserve unpassed attributes
